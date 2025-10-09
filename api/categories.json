@@ -1,0 +1,70 @@
+{
+  "categories": [
+    {
+      "id": "wlb-india-2024",
+      "name": "Wiki Loves Birds India 2024",
+      "slug": "wiki-loves-birds-india-2024",
+      "description": "Photography contest celebrating Indian bird diversity",
+      "categoryName": "Images_from_Wiki_Loves_Birds_India_2024_(maintenance-earth)",
+      "icon": "🦅",
+      "year": "2024",
+      "color1": "#3B82F6",
+      "color2": "#1D4ED8"
+    },
+    {
+      "id": "wlm-india-2023",
+      "name": "Wiki Loves Monuments India 2023",
+      "slug": "wiki-loves-monuments-india-2023",
+      "description": "Documenting India's architectural heritage",
+      "categoryName": "Images_from_Wiki_Loves_Monuments_2023_in_India",
+      "icon": "🏛️",
+      "year": "2023",
+      "color1": "#F59E0B",
+      "color2": "#D97706"
+    },
+    {
+      "id": "wle-india-2023",
+      "name": "Wiki Loves Earth India 2023",
+      "slug": "wiki-loves-earth-india-2023",
+      "description": "Capturing natural heritage and protected areas",
+      "categoryName": "Images_from_Wiki_Loves_Earth_2023_in_India",
+      "icon": "🌍",
+      "year": "2023",
+      "color1": "#10B981",
+      "color2": "#059669"
+    },
+    {
+      "id": "wla-2023",
+      "name": "Wiki Loves Africa 2023",
+      "slug": "wiki-loves-africa-2023",
+      "description": "Celebrating African culture and heritage",
+      "categoryName": "Images_from_Wiki_Loves_Africa_2023",
+      "icon": "🌍",
+      "year": "2023",
+      "color1": "#EF4444",
+      "color2": "#DC2626"
+    },
+    {
+      "id": "wlf-2023",
+      "name": "Wiki Loves Folklore 2023",
+      "slug": "wiki-loves-folklore-2023",
+      "description": "Traditional cultural expressions and practices",
+      "categoryName": "Images_from_Wiki_Loves_Folklore_2023",
+      "icon": "🎭",
+      "year": "2023",
+      "color1": "#8B5CF6",
+      "color2": "#7C3AED"
+    },
+    {
+      "id": "ceebies-2022",
+      "name": "CEE Spring 2022",
+      "slug": "cee-spring-2022",
+      "description": "Central and Eastern European photo contest",
+      "categoryName": "Images_from_CEE_Spring_2022",
+      "icon": "🌸",
+      "year": "2022",
+      "color1": "#EC4899",
+      "color2": "#DB2777"
+    }
+  ]
+}
