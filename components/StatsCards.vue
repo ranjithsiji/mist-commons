@@ -1,9 +1,9 @@
 <template>
-  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 mb-8">
     <div class="bg-white rounded-lg shadow p-6">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-gray-500 text-sm">Contributors</p>
+          <p class="text-gray-600 text-md">Contributors</p>
           <p class="text-3xl font-bold text-blue-600">{{ stats.uniqueUsers }}</p>
         </div>
         <svg class="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

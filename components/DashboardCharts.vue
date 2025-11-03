@@ -14,6 +14,11 @@
       </div>
 
       <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Top Camera Models</h2>
+        <canvas ref="cameraChart"></canvas>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-xl font-bold text-gray-800 mb-4">Contribution Distribution</h2>
         <canvas ref="userPieChart"></canvas>
       </div>
@@ -24,11 +29,6 @@
       <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-xl font-bold text-gray-800 mb-4">File Size Distribution</h2>
         <canvas ref="sizeChart"></canvas>
-      </div>
-
-      <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">Top Camera Models</h2>
-        <canvas ref="cameraChart"></canvas>
       </div>
     </div>
   </div>
