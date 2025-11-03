@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 
-const CATEGORIES_API_URL = '/api/categories.php';
-const DASHBOARD_API_URL = '/api/dashboard.php';
+const CATEGORIES_API_URL = 'http://localhost:8000/categories.php';
+const DASHBOARD_API_URL = 'http://localhost:8000//dashboard.php';
 
 export function useApi() {
   const loading = ref(false);
