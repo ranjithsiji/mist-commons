@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex flex-col">
     <!-- Cover Page -->
     <CoverPage
       v-if="!selectedCategory"
@@ -10,9 +10,10 @@
     />
 
     <!-- Dashboard Page -->
-    <div v-else class="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+    <div v-else class="flex-1 bg-gradient-to-br from-blue-50 to-green-50 flex flex-col">
       <!-- Header with Navigation -->
       <header class="bg-white/90 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+        <!-- existing header content -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex justify-between items-center h-16">
             <!-- Logo and Title -->
@@ -32,7 +33,7 @@
               </div>
             </div>
             
-            <!-- Top Navigation Menu -->
+            <!-- Top Navigation Menu and refresh (unchanged) -->
             <div class="flex items-center space-x-4">
               <nav class="hidden md:flex items-center space-x-6">
                 <a href="#" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Overview</a>
@@ -41,7 +42,6 @@
                 <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Commons</a>
               </nav>
               
-              <!-- Refresh Button -->
               <button
                 @click="refreshData"
                 :disabled="loading"
@@ -63,7 +63,6 @@
                 {{ loading ? 'Refreshing...' : 'Refresh' }}
               </button>
               
-              <!-- Mobile menu button -->
               <div class="md:hidden">
                 <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-gray-700 hover:text-wikimedia-blue p-2">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,8 +87,8 @@
       </header>
 
       <!-- Main Dashboard Content -->
-      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Page Title and Description -->
+      <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <!-- existing main content -->
         <div class="mb-8 animate-fade-in">
           <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
             {{ selectedCategory.name }} Analytics
@@ -99,7 +98,6 @@
           </p>
         </div>
 
-        <!-- Error Message -->
         <div v-if="error" class="bg-red-50 border-l-4 border-red-400 text-red-700 p-6 rounded-xl mb-8 shadow-lg animate-slide-up">
           <div class="flex items-center">
             <svg class="w-6 h-6 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -112,7 +110,6 @@
           </div>
         </div>
 
-        <!-- Loading State -->
         <div v-if="loading && !dashboardData" class="text-center py-24 animate-fade-in">
           <div class="relative inline-block mb-8">
             <div class="w-20 h-20 border-4 border-wikimedia-blue/20 border-t-wikimedia-blue rounded-full animate-spin"></div>
@@ -127,22 +124,17 @@
           </div>
         </div>
 
-        <!-- Dashboard Content -->
         <div v-if="dashboardData && stats" class="space-y-8 animate-slide-up">
-          <!-- Stats Cards -->
           <StatsCards :stats="stats" />
-
-          <!-- Map Section -->
           <PhotoMap v-if="geoData.length > 0" :geo-data="geoData" />
-
-          <!-- Charts -->
           <DashboardCharts :data="dashboardData" />
-
-          <!-- User Contributions Table -->
           <ContributorsTable :user-contributions="dashboardData.userContributions" />
         </div>
       </main>
     </div>
+
+    <!-- Global Footer -->
+    <Footer />
   </div>
 </template>
 
@@ -153,6 +145,7 @@ import StatsCards from './components/StatsCards.vue';
 import PhotoMap from './components/PhotoMap.vue';
 import DashboardCharts from './components/DashboardCharts.vue';
 import ContributorsTable from './components/ContributorsTable.vue';
+import Footer from './components/Footer.vue';
 import { useApi } from './composables/useApi';
 import { useDataProcessor } from './composables/useData';
 
@@ -181,7 +174,7 @@ const loadCategories = async () => {
 
 const selectCategory = (category) => {
   selectedCategory.value = category;
-  mobileMenuOpen.value = false; // Close mobile menu when navigating
+  mobileMenuOpen.value = false;
   updateURL(category.slug);
   fetchData(category.categoryName);
 };
