@@ -17,6 +17,9 @@
         <button @click="toggleDir" class="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
           {{ sortDir === 'desc' ? 'Desc' : 'Asc' }}
         </button>
+        <div class="h-6 w-px bg-gray-200" />
+        <button @click="exportCSV" class="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Export CSV</button>
+        <button @click="exportWikiTable" class="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Copy Wikitable</button>
       </div>
     </div>
 
@@ -99,4 +102,46 @@ const visibleRows = computed(() => {
 
   return rows;
 });
+
+// Export helpers
+const download = (filename, content, mime='text/plain') => {
+  const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+const exportCSV = () => {
+  const header = ['Rank','Username','Files Uploaded','Total Size (MB)'];
+  const lines = [header.join(',')];
+  visibleRows.value.forEach((u, i) => {
+    const row = [i + 1, u.name, u.files, u.sizeMB];
+    lines.push(row.map(v => typeof v === 'string' && v.includes(',') ? `"${v.replace(/"/g,'""')}"` : v).join(','));
+  });
+  download('contributors.csv', lines.join('\n'), 'text/csv');
+};
+
+const exportWikiTable = () => {
+  const lines = [];
+  lines.push('{| class="wikitable sortable"');
+  lines.push('|+ Contributors');
+  lines.push('! Rank !! Username !! Files Uploaded !! Total Size (MB)');
+  visibleRows.value.forEach((u, i) => {
+    const userPage = `[[User:${u.name}|${u.name}]]`;
+    lines.push('|-');
+    lines.push(`| ${i + 1} || ${userPage} || ${u.files} || ${u.sizeMB}`);
+  });
+  lines.push('|}');
+
+  const text = lines.join('\n');
+
+  // Copy to clipboard and also offer download
+  navigator.clipboard?.writeText(text).catch(()=>{});
+  download('contributors-wikitable.txt', text, 'text/plain');
+};
 </script>
