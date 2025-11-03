@@ -1,4 +1,4 @@
 #!/bin/bash
 # Quick deploy script
-npm run build
+pnpm run build
 echo "Build complete! Deploy the 'dist' directory to your server."
