@@ -238,11 +238,14 @@ try {
     }
 
     // Check if we should use mock data (for development)
+    // Load data for wiki-loves-birds-india-2024 from a json file to test the output
     $useMockData = isset($_GET['mock']) && $_GET['mock'] === '1';
-    
+    $useCatData = isset($_GET['cat']) && $_GET['cat'] === '1';
     if ($useMockData) {
         // Generate mock data
         $data = generateMockData($category);
+    } elseif ($useCatData){
+        $jsonData = __DIR__ . '/sample-data.json';
     } else {
         // Query fresh data from database
         $data = queryDatabase($dbConfig, $category);
@@ -257,7 +260,11 @@ try {
         $data['category'] = $category;
     }
 
+    if ($useCatData){
+        echo json_encode($jsonData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    } else {
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    }
 
 } catch (Exception $e) {
     http_response_code(500);
