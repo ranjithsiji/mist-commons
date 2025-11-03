@@ -1,55 +1,173 @@
 import { ref } from 'vue';
 
-const CATEGORIES_API_URL = 'http://localhost:8000/categories.php';
-const DASHBOARD_API_URL = 'http://localhost:8000//dashboard.php';
+// Use environment variables with fallback to local development
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_TIMEOUT = import.meta.env.VITE_API_TIMEOUT || 30000;
 
 export function useApi() {
   const loading = ref(false);
   const error = ref('');
+
+  // Create fetch with timeout
+  const fetchWithTimeout = async (url, options = {}) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        }
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error('Request timeout - server may be unavailable');
+      }
+      throw err;
+    }
+  };
 
   const fetchCategories = async () => {
     loading.value = true;
     error.value = '';
     
     try {
-      const response = await fetch(CATEGORIES_API_URL);
+      console.log('Fetching categories from:', `${API_BASE_URL}/categories.php`);
+      
+      const response = await fetchWithTimeout(`${API_BASE_URL}/categories.php`);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
       }
+      
       const jsonData = await response.json();
+      console.log('Categories response:', jsonData);
+      
+      if (!jsonData.success) {
+        throw new Error(jsonData.error || 'API returned success: false');
+      }
+      
       return jsonData.categories || [];
     } catch (err) {
-      error.value = 'Error loading categories: ' + err.message;
-      console.error('Fetch error:', err);
-      throw err;
+      const errorMessage = `Failed to load categories: ${err.message}`;
+      error.value = errorMessage;
+      console.error('Categories fetch error:', err);
+      
+      // For development, provide fallback mock data
+      if (import.meta.env.DEV) {
+        console.warn('Using fallback mock data for development');
+        return getMockCategories();
+      }
+      
+      throw new Error(errorMessage);
     } finally {
       loading.value = false;
     }
   };
 
   const fetchDashboardData = async (categoryName) => {
+    if (!categoryName) {
+      throw new Error('Category name is required');
+    }
+
     loading.value = true;
     error.value = '';
     
     try {
-      const response = await fetch(`${DASHBOARD_API_URL}?category=${encodeURIComponent(categoryName)}`);
+      const url = `${API_BASE_URL}/dashboard.php?category=${encodeURIComponent(categoryName)}`;
+      console.log('Fetching dashboard data from:', url);
+      
+      const response = await fetchWithTimeout(url);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
       }
+      
       const jsonData = await response.json();
+      console.log('Dashboard response:', jsonData);
       
       if (!jsonData.success) {
-        throw new Error(jsonData.error || 'Failed to fetch data');
+        throw new Error(jsonData.error || 'Failed to fetch dashboard data');
       }
       
       return jsonData;
     } catch (err) {
-      error.value = 'Error loading data: ' + err.message;
-      console.error('Fetch error:', err);
-      throw err;
+      const errorMessage = `Failed to load dashboard data: ${err.message}`;
+      error.value = errorMessage;
+      console.error('Dashboard fetch error:', err);
+      
+      // For development, provide fallback mock data
+      if (import.meta.env.DEV) {
+        console.warn('Using fallback mock data for development');
+        return getMockDashboardData(categoryName);
+      }
+      
+      throw new Error(errorMessage);
     } finally {
       loading.value = false;
     }
+  };
+
+  // Mock data for development/fallback
+  const getMockCategories = () => {
+    return [
+      {
+        id: 'wlb-india-2024',
+        name: 'Wiki Loves Birds India 2024',
+        slug: 'wiki-loves-birds-india-2024',
+        description: 'Photography contest celebrating Indian bird diversity',
+        categoryName: 'Images_from_Wiki_Loves_Birds_India_2024_(maintenance-earth)',
+        icon: '🦅',
+        year: '2024',
+        color1: '#3B82F6',
+        color2: '#1D4ED8'
+      },
+      {
+        id: 'wlm-india-2023',
+        name: 'Wiki Loves Monuments India 2023',
+        slug: 'wiki-loves-monuments-india-2023',
+        description: 'Documenting India\'s architectural heritage',
+        categoryName: 'Images_from_Wiki_Loves_Monuments_2023_in_India',
+        icon: '🏛️',
+        year: '2023',
+        color1: '#F59E0B',
+        color2: '#D97706'
+      },
+      {
+        id: 'wle-india-2023',
+        name: 'Wiki Loves Earth India 2023',
+        slug: 'wiki-loves-earth-india-2023',
+        description: 'Capturing natural heritage and protected areas',
+        categoryName: 'Images_from_Wiki_Loves_Earth_2023_in_India',
+        icon: '🌍',
+        year: '2023',
+        color1: '#10B981',
+        color2: '#059669'
+      }
+    ];
+  };
+
+  const getMockDashboardData = (categoryName) => {
+    return {
+      success: true,
+      rows: [
+        [1, categoryName, 'Sample_Image_1.jpg', '20241001', '20241001120000', 2048000, '{"data":{"Model":"Canon EOS 5D","GPSLatitude":28.6139,"GPSLongitude":77.2090}}', 'SampleUser1'],
+        [2, categoryName, 'Sample_Image_2.jpg', '20241002', '20241002130000', 3072000, '{"data":{"Model":"Nikon D850"}}', 'SampleUser2'],
+        [3, categoryName, 'Sample_Image_3.jpg', '20241003', '20241003140000', 1536000, '{"data":{"Model":"Sony Alpha 7R"}}', 'SampleUser1'],
+      ],
+      count: 3,
+      timestamp: new Date().toISOString(),
+      category: categoryName,
+      cached: false
+    };
   };
 
   return {
