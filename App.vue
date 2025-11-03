@@ -7,6 +7,7 @@
       :loading="loadingCategories"
       :error="error"
       @select="selectCategory"
+      @custom="selectCustomCategory"
     />
 
     <!-- Dashboard Page -->
@@ -173,6 +174,13 @@ const loadCategories = async () => {
 };
 
 const selectCategory = (category) => {
+  selectedCategory.value = category;
+  mobileMenuOpen.value = false;
+  updateURL(category.slug);
+  fetchData(category.categoryName);
+};
+
+const selectCustomCategory = (category) => {
   selectedCategory.value = category;
   mobileMenuOpen.value = false;
   updateURL(category.slug);
