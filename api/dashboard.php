@@ -149,7 +149,7 @@ function queryDatabase($dbConfig, $category) {
 /**
  * Load sample data from JSON file
  */
-function loadSampleData($category) {
+function loadSampleData($category='sample') {
     $sampleFile = __DIR__ . '/sample-data.json';
     
     if (!file_exists($sampleFile)) {

@@ -81,7 +81,7 @@ export function useApi() {
     error.value = '';
     
     try {
-      const url = `${API_BASE_URL}/dashboard.php?cat=1&category=${encodeURIComponent(categoryName)}`;
+      const url = `${API_BASE_URL}/dashboard.php?sample=1&category=${encodeURIComponent(categoryName)}`;
       console.log('Fetching dashboard data from:', url);
       
       const response = await fetchWithTimeout(url);
