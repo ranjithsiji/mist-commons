@@ -147,6 +147,61 @@ function queryDatabase($dbConfig, $category) {
 }
 
 /**
+ * Load sample data from JSON file
+ */
+function loadSampleData($category) {
+    $sampleFile = __DIR__ . '/sample-data.json';
+    
+    if (!file_exists($sampleFile)) {
+        return [
+            'success' => false,
+            'error' => 'Sample data file not found: ' . $sampleFile,
+            'category' => $category
+        ];
+    }
+    
+    try {
+        $jsonContent = file_get_contents($sampleFile);
+        $sampleData = json_decode($jsonContent, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return [
+                'success' => false,
+                'error' => 'Invalid JSON in sample data file: ' . json_last_error_msg(),
+                'category' => $category
+            ];
+        }
+        
+        // Validate structure
+        if (!isset($sampleData['rows']) || !is_array($sampleData['rows'])) {
+            return [
+                'success' => false,
+                'error' => 'Sample data file must contain a "rows" array',
+                'category' => $category
+            ];
+        }
+        
+        return [
+            'success' => true,
+            'meta' => $sampleData['meta'] ?? null,
+            'headers' => $sampleData['headers'] ?? ['cl_from', 'cl_to', 'File', 'imgdate', 'img_timestamp', 'img_size', 'img_metadata', 'actor_name'],
+            'rows' => $sampleData['rows'],
+            'count' => count($sampleData['rows']),
+            'timestamp' => date('Y-m-d H:i:s'),
+            'category' => $category,
+            'sample_data' => true
+        ];
+        
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'error' => 'Error reading sample data: ' . $e->getMessage(),
+            'category' => $category
+        ];
+    }
+}
+
+/**
  * Generate mock data for development/testing
  */
 function generateMockData($category) {
@@ -237,34 +292,31 @@ try {
         }
     }
 
-    // Check if we should use mock data (for development)
-    // Load data for wiki-loves-birds-india-2024 from a json file to test the output
+    // Determine data source
     $useMockData = isset($_GET['mock']) && $_GET['mock'] === '1';
-    $useCatData = isset($_GET['cat']) && $_GET['cat'] === '1';
+    $useSampleData = isset($_GET['sample']) && $_GET['sample'] === '1';
+    
     if ($useMockData) {
         // Generate mock data
         $data = generateMockData($category);
-    } elseif ($useCatData){
-        $jsonData = __DIR__ . '/sample-data.json';
+    } elseif ($useSampleData) {
+        // Load sample data from JSON file
+        $data = loadSampleData($category);
     } else {
         // Query fresh data from database
         $data = queryDatabase($dbConfig, $category);
     }
     
     if ($data['success']) {
-        // Save to cache (only if not mock data)
-        if (!isset($data['mock_data'])) {
+        // Save to cache (only if not mock data or sample data)
+        if (!isset($data['mock_data']) && !isset($data['sample_data'])) {
             saveCacheData($cacheFile, $data);
         }
         $data['cached'] = false;
         $data['category'] = $category;
     }
 
-    if ($useCatData){
-        echo json_encode($jsonData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-    } else {
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
-    }
 
 } catch (Exception $e) {
     http_response_code(500);
