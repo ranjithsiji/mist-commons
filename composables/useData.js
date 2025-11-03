@@ -71,6 +71,36 @@ export function useDataProcessor() {
       .map(([date, count]) => ({ date, uploads: count }))
       .sort((a, b) => a.date.localeCompare(b.date));
     
+    // Hourly distribution (based on timestamp)
+    const hourlyDistribution = Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 }));
+    rows.forEach(row => {
+      const timestamp = row[4]; // img_timestamp
+      if (timestamp && timestamp.length >= 10) {
+        try {
+          const hour = parseInt(timestamp.slice(8, 10)); // Extract hour from YYYYMMDDHHmmss
+          if (hour >= 0 && hour <= 23) {
+            hourlyDistribution[hour].count++;
+          }
+        } catch (e) {
+          // Skip invalid timestamps
+        }
+      }
+    });
+    
+    // Monthly activity
+    const monthlyActivity = {};
+    rows.forEach(row => {
+      const date = row[3];
+      if (date && date.length >= 6) {
+        const monthKey = `${date.slice(0,4)}-${date.slice(4,6)}`; // YYYY-MM
+        monthlyActivity[monthKey] = (monthlyActivity[monthKey] || 0) + 1;
+      }
+    });
+    
+    const monthlyActivityArray = Object.entries(monthlyActivity)
+      .map(([month, count]) => ({ month, count }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+    
     // File size distribution
     const sizeRanges = {
       '0-1 MB': 0,
@@ -123,6 +153,8 @@ export function useDataProcessor() {
       data: {
         userContributions: userContribArray,
         dailyUploads: dailyUploadArray,
+        hourlyDistribution,
+        monthlyActivity: monthlyActivityArray,
         sizeDistribution,
         cameraData
       },
