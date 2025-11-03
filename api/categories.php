@@ -6,10 +6,29 @@
  * Add or remove categories by editing the $categories array below
  */
 
-header('Content-Type: application/json');
+// Set headers first
+header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Accept');
+header('Access-Control-Max-Age: 3600');
+
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+// Only allow GET requests
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    http_response_code(405);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Method not allowed. Only GET requests are supported.',
+        'timestamp' => date('Y-m-d H:i:s')
+    ]);
+    exit();
+}
 
 /**
  * Categories Configuration
@@ -29,7 +48,7 @@ $categories = [
         'id' => 'wlb-india-2024',
         'name' => 'Wiki Loves Birds India 2024',
         'slug' => 'wiki-loves-birds-india-2024',
-        'description' => 'Photography contest celebrating Indian bird diversity',
+        'description' => 'Photography contest celebrating Indian bird diversity with thousands of contributions from nature photographers across India.',
         'categoryName' => 'Images_from_Wiki_Loves_Birds_India_2024_(maintenance-earth)',
         'icon' => '🦅',
         'year' => '2024',
@@ -40,7 +59,7 @@ $categories = [
         'id' => 'wlm-india-2023',
         'name' => 'Wiki Loves Monuments India 2023',
         'slug' => 'wiki-loves-monuments-india-2023',
-        'description' => 'Documenting India\'s architectural heritage',
+        'description' => 'Documenting India\'s rich architectural heritage including temples, forts, palaces, and historical monuments.',
         'categoryName' => 'Images_from_Wiki_Loves_Monuments_2023_in_India',
         'icon' => '🏛️',
         'year' => '2023',
@@ -51,7 +70,7 @@ $categories = [
         'id' => 'wle-india-2023',
         'name' => 'Wiki Loves Earth India 2023',
         'slug' => 'wiki-loves-earth-india-2023',
-        'description' => 'Capturing natural heritage and protected areas',
+        'description' => 'Capturing natural heritage including national parks, wildlife sanctuaries, and protected areas across India.',
         'categoryName' => 'Images_from_Wiki_Loves_Earth_2023_in_India',
         'icon' => '🌍',
         'year' => '2023',
@@ -62,7 +81,7 @@ $categories = [
         'id' => 'wla-2023',
         'name' => 'Wiki Loves Africa 2023',
         'slug' => 'wiki-loves-africa-2023',
-        'description' => 'Celebrating African culture and heritage',
+        'description' => 'Celebrating African culture, heritage, and natural beauty through collaborative photography efforts.',
         'categoryName' => 'Images_from_Wiki_Loves_Africa_2023',
         'icon' => '🌍',
         'year' => '2023',
@@ -73,7 +92,7 @@ $categories = [
         'id' => 'wlf-2023',
         'name' => 'Wiki Loves Folklore 2023',
         'slug' => 'wiki-loves-folklore-2023',
-        'description' => 'Traditional cultural expressions and practices',
+        'description' => 'Traditional cultural expressions, practices, festivals, and folklore from around the world.',
         'categoryName' => 'Images_from_Wiki_Loves_Folklore_2023',
         'icon' => '🎭',
         'year' => '2023',
@@ -84,7 +103,7 @@ $categories = [
         'id' => 'ceebies-2022',
         'name' => 'CEE Spring 2022',
         'slug' => 'cee-spring-2022',
-        'description' => 'Central and Eastern European photo contest',
+        'description' => 'Central and Eastern European spring photography contest showcasing natural beauty and cultural heritage.',
         'categoryName' => 'Images_from_CEE_Spring_2022',
         'icon' => '🌸',
         'year' => '2022',
@@ -93,26 +112,61 @@ $categories = [
     ]
 ];
 
-/**
- * Load categories from external JSON file (optional)
- * Uncomment this section if you want to load from a JSON file instead
- */
-/*
-$jsonFile = __DIR__ . '/categories.json';
-if (file_exists($jsonFile)) {
-    $jsonContent = file_get_contents($jsonFile);
-    $categoriesFromFile = json_decode($jsonContent, true);
-    if ($categoriesFromFile && isset($categoriesFromFile['categories'])) {
-        $categories = $categoriesFromFile['categories'];
+try {
+    /**
+     * Load categories from external JSON file (optional)
+     * Uncomment this section if you want to load from a JSON file instead
+     */
+    $jsonFile = __DIR__ . '/categories.json';
+    if (file_exists($jsonFile)) {
+        $jsonContent = file_get_contents($jsonFile);
+        $categoriesFromFile = json_decode($jsonContent, true);
+        
+        if (json_last_error() === JSON_ERROR_NONE && 
+            $categoriesFromFile && 
+            isset($categoriesFromFile['categories']) && 
+            is_array($categoriesFromFile['categories'])) {
+            $categories = $categoriesFromFile['categories'];
+        }
     }
+    
+    // Validate categories data
+    $validatedCategories = [];
+    foreach ($categories as $category) {
+        if (isset($category['id'], $category['name'], $category['categoryName'])) {
+            // Ensure all required fields have default values
+            $validatedCategories[] = [
+                'id' => $category['id'],
+                'name' => $category['name'],
+                'slug' => $category['slug'] ?? strtolower(str_replace(' ', '-', $category['name'])),
+                'description' => $category['description'] ?? '',
+                'categoryName' => $category['categoryName'],
+                'icon' => $category['icon'] ?? '📊',
+                'year' => $category['year'] ?? '',
+                'color1' => $category['color1'] ?? '#3B82F6',
+                'color2' => $category['color2'] ?? '#1D4ED8'
+            ];
+        }
+    }
+    
+    // Return successful response
+    echo json_encode([
+        'success' => true,
+        'categories' => $validatedCategories,
+        'count' => count($validatedCategories),
+        'timestamp' => date('Y-m-d H:i:s'),
+        'version' => '1.0.0'
+    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Internal server error: ' . $e->getMessage(),
+        'timestamp' => date('Y-m-d H:i:s')
+    ]);
+    
+    // Log error for debugging
+    error_log('Categories API Error: ' . $e->getMessage());
 }
-*/
-
-// Return the categories
-echo json_encode([
-    'success' => true,
-    'categories' => $categories,
-    'count' => count($categories),
-    'timestamp' => date('Y-m-d H:i:s')
-]);
 ?>
