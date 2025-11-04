@@ -59,17 +59,102 @@
           Explore contest statistics, contributor insights, and media analytics from Wikimedia Commons photography contests
         </p>
         <p class="text-gray-500 max-w-2xl mx-auto">
-          Select a contest category below to dive into detailed visualizations and data insights
+          Select a contest category below or search for a custom category
         </p>
       </div>
 
+      <!-- Custom Category Search Section -->
+      <div class="mb-16 animate-fade-in">
+        <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 p-6 max-w-3xl mx-auto">
+          <div class="text-center mb-4">
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">Custom Category Search</h3>
+            <p class="text-gray-600">Search for any Wikimedia Commons category to analyze</p>
+          </div>
+          
+          <div class="relative">
+            <div class="flex flex-col md:flex-row gap-3">
+              <div class="flex-1 relative">
+                <input
+                  ref="categoryInput"
+                  v-model="customCategoryQuery"
+                  @input="handleCategoryInput"
+                  @keydown.down.prevent="navigateSuggestion(1)"
+                  @keydown.up.prevent="navigateSuggestion(-1)"
+                  @keydown.enter.prevent="selectCurrentSuggestion"
+                  @keydown.escape="hideSuggestions"
+                  @focus="showSuggestions = customCategoryQuery.length >= 3"
+                  type="text"
+                  placeholder="Start typing a category name (e.g., 'Category:Images from...')"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wikimedia-blue focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
+                />
+                
+                <!-- Loading indicator in input -->
+                <div v-if="searchingCategories" class="absolute right-4 top-1/2 transform -translate-y-1/2">
+                  <div class="w-5 h-5 border-2 border-wikimedia-blue/20 border-t-wikimedia-blue rounded-full animate-spin"></div>
+                </div>
+                
+                <!-- Autocomplete dropdown -->
+                <div
+                  v-if="showSuggestions && categorySuggestions.length > 0"
+                  class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                >
+                  <div
+                    v-for="(suggestion, index) in categorySuggestions"
+                    :key="suggestion.title"
+                    @click="selectSuggestion(suggestion)"
+                    @mouseenter="selectedSuggestionIndex = index"
+                    :class="[
+                      'px-4 py-3 cursor-pointer transition-colors duration-150 border-b border-gray-100 last:border-b-0',
+                      selectedSuggestionIndex === index
+                        ? 'bg-wikimedia-blue text-white'
+                        : 'hover:bg-gray-50 text-gray-900'
+                    ]"
+                  >
+                    <div class="font-medium">{{ suggestion.title.replace('Category:', '') }}</div>
+                    <div 
+                      v-if="suggestion.categoryinfo && suggestion.categoryinfo.pages"
+                      :class="[
+                        'text-sm mt-1',
+                        selectedSuggestionIndex === index ? 'text-blue-100' : 'text-gray-500'
+                      ]"
+                    >
+                      {{ suggestion.categoryinfo.pages }} pages
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <button
+                @click="analyzeCustomCategory"
+                :disabled="!customCategoryQuery.trim() || searchingCategories"
+                class="px-6 py-3 bg-gradient-to-r from-wikimedia-blue to-wikimedia-green text-white rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium"
+              >
+                <svg v-if="searchingCategories" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <svg v-else class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                {{ searchingCategories ? 'Searching...' : 'View Statistics' }}
+              </button>
+            </div>
+            
+            <!-- Search help text -->
+            <div class="mt-3 text-sm text-gray-500 text-center">
+              <p>Search for categories like "Images from Wiki Loves Monuments 2023" or browse suggestions below</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Error Message -->
-      <div v-if="error" class="bg-red-50 border-l-4 border-red-400 text-red-700 p-6 rounded-lg mb-8 max-w-3xl mx-auto shadow-lg animate-slide-up">
+      <div v-if="error || categorySearchError" class="bg-red-50 border-l-4 border-red-400 text-red-700 p-6 rounded-lg mb-8 max-w-3xl mx-auto shadow-lg animate-slide-up">
         <div class="flex items-center">
           <svg class="w-6 h-6 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
           </svg>
-          <span class="font-medium">{{ error }}</span>
+          <span class="font-medium">{{ error || categorySearchError }}</span>
         </div>
       </div>
 
@@ -86,7 +171,7 @@
       <!-- Categories Section -->
       <div v-else-if="categories.length > 0" class="animate-slide-up">
         <div class="text-center mb-12">
-          <h3 class="text-3xl font-bold text-gray-800 mb-3">Contest Categories</h3>
+          <h3 class="text-3xl font-bold text-gray-800 mb-3">Featured Contest Categories</h3>
           <p class="text-gray-600 text-lg">{{ categories.length }} contest{{ categories.length !== 1 ? 's' : '' }} available for analysis</p>
         </div>
         
@@ -145,7 +230,7 @@
           </svg>
         </div>
         <h3 class="text-xl font-semibold text-gray-700 mb-2">No Categories Available</h3>
-        <p class="text-gray-500">No contest categories found. Please check your configuration.</p>
+        <p class="text-gray-500">No contest categories found. Use the custom search above to find categories.</p>
       </div>
 
       <!-- Footer -->
@@ -184,9 +269,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 
-defineProps({
+const props = defineProps({
   categories: {
     type: Array,
     required: true,
@@ -202,9 +287,203 @@ defineProps({
   }
 });
 
-defineEmits(['select']);
+const emit = defineEmits(['select', 'custom']);
 
 const mobileMenuOpen = ref(false);
+
+// Custom category search
+const customCategoryQuery = ref('');
+const categorySuggestions = ref([]);
+const showSuggestions = ref(false);
+const searchingCategories = ref(false);
+const selectedSuggestionIndex = ref(-1);
+const categorySearchError = ref('');
+const categoryInput = ref(null);
+
+let searchTimeout = null;
+
+const handleCategoryInput = () => {
+  const query = customCategoryQuery.value.trim();
+  
+  if (query.length < 3) {
+    showSuggestions.value = false;
+    categorySuggestions.value = [];
+    return;
+  }
+
+  // Clear previous timeout
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+  
+  // Debounce search
+  searchTimeout = setTimeout(() => {
+    searchCategories(query);
+  }, 300);
+};
+
+const searchCategories = async (query) => {
+  if (!query || query.length < 3) return;
+  
+  searchingCategories.value = true;
+  categorySearchError.value = '';
+  
+  try {
+    // Add "Category:" prefix if not present
+    let searchQuery = query;
+    if (!searchQuery.toLowerCase().startsWith('category:')) {
+      searchQuery = `Category:${query}`;
+    }
+    
+    // Use MediaWiki API to search for categories
+    const apiUrl = 'https://commons.wikimedia.org/w/api.php';
+    const params = new URLSearchParams({
+      action: 'query',
+      format: 'json',
+      origin: '*',
+      list: 'search',
+      srnamespace: '14', // Category namespace
+      srsearch: searchQuery,
+      srlimit: '10',
+      srprop: 'size|wordcount|timestamp',
+      formatversion: '2'
+    });
+    
+    const response = await fetch(`${apiUrl}?${params}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error.info || 'API Error');
+    }
+    
+    // Get category info for the results
+    if (data.query && data.query.search && data.query.search.length > 0) {
+      const categoryTitles = data.query.search.map(item => item.title);
+      await getCategoryInfo(categoryTitles);
+    } else {
+      categorySuggestions.value = [];
+      showSuggestions.value = false;
+    }
+    
+  } catch (error) {
+    console.error('Category search error:', error);
+    categorySearchError.value = `Failed to search categories: ${error.message}`;
+    categorySuggestions.value = [];
+    showSuggestions.value = false;
+  } finally {
+    searchingCategories.value = false;
+  }
+};
+
+const getCategoryInfo = async (categoryTitles) => {
+  try {
+    const apiUrl = 'https://commons.wikimedia.org/w/api.php';
+    const params = new URLSearchParams({
+      action: 'query',
+      format: 'json',
+      origin: '*',
+      titles: categoryTitles.join('|'),
+      prop: 'categoryinfo',
+      formatversion: '2'
+    });
+    
+    const response = await fetch(`${apiUrl}?${params}`);
+    const data = await response.json();
+    
+    if (data.query && data.query.pages) {
+      categorySuggestions.value = data.query.pages.filter(page => !page.missing);
+      showSuggestions.value = categorySuggestions.value.length > 0;
+      selectedSuggestionIndex.value = -1;
+    }
+  } catch (error) {
+    console.error('Category info error:', error);
+  }
+};
+
+const navigateSuggestion = (direction) => {
+  if (!showSuggestions.value || categorySuggestions.value.length === 0) return;
+  
+  selectedSuggestionIndex.value += direction;
+  
+  if (selectedSuggestionIndex.value < -1) {
+    selectedSuggestionIndex.value = categorySuggestions.value.length - 1;
+  } else if (selectedSuggestionIndex.value >= categorySuggestions.value.length) {
+    selectedSuggestionIndex.value = -1;
+  }
+};
+
+const selectCurrentSuggestion = () => {
+  if (selectedSuggestionIndex.value >= 0 && selectedSuggestionIndex.value < categorySuggestions.value.length) {
+    selectSuggestion(categorySuggestions.value[selectedSuggestionIndex.value]);
+  } else if (customCategoryQuery.value.trim()) {
+    analyzeCustomCategory();
+  }
+};
+
+const selectSuggestion = (suggestion) => {
+  customCategoryQuery.value = suggestion.title;
+  showSuggestions.value = false;
+  categorySuggestions.value = [];
+  selectedSuggestionIndex.value = -1;
+  
+  nextTick(() => {
+    if (categoryInput.value) {
+      categoryInput.value.focus();
+    }
+  });
+};
+
+const hideSuggestions = () => {
+  showSuggestions.value = false;
+  selectedSuggestionIndex.value = -1;
+};
+
+const analyzeCustomCategory = () => {
+  const query = customCategoryQuery.value.trim();
+  if (!query) return;
+  
+  // Create a custom category object
+  const customCategory = {
+    id: `custom-${Date.now()}`,
+    name: query.replace('Category:', ''),
+    slug: query.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    description: `Custom analysis for ${query}`,
+    categoryName: query.startsWith('Category:') ? query.substring(9) : query,
+    icon: '🔍',
+    year: 'Custom',
+    color1: '#8B5CF6',
+    color2: '#7C3AED',
+    isCustom: true
+  };
+  
+  hideSuggestions();
+  emit('custom', customCategory);
+};
+
+// Handle click outside to hide suggestions
+const handleClickOutside = (event) => {
+  if (!event.target.closest('.relative')) {
+    hideSuggestions();
+  }
+};
+
+// Add event listener when component mounts
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+// Remove event listener when component unmounts
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+});
 </script>
 
 <style scoped>
