@@ -450,8 +450,8 @@ const analyzeCustomCategory = () => {
   // Create a custom category object
   const customCategory = {
     id: `custom-${Date.now()}`,
-    name: query.replace('Category:', ''),
-    slug: query.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    name: query.replace(/\ /g, '_').replace('Category:', ''),
+    slug: query.replace(/\ /g, '_'),
     description: `Custom analysis for ${query}`,
     categoryName: query.startsWith('Category:') ? query.substring(9) : query,
     icon: '🔍',
@@ -460,6 +460,7 @@ const analyzeCustomCategory = () => {
     color2: '#7C3AED',
     isCustom: true
   };
+  console.log(customCategory);
   
   hideSuggestions();
   emit('custom', customCategory);

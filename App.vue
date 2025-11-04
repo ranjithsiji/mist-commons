@@ -29,9 +29,9 @@
                 </svg>
               </button>
               <div>
-                <h1 class="text-xl font-bold text-gray-900">{{ selectedCategory.name }}</h1>
+                <h1 class="text-xl font-bold text-gray-900">{{ selectedCategory.categoryName }}</h1>
                 <p class="text-sm text-gray-500 hidden sm:block">
-                  {{ selectedCategory.isCustom ? 'Custom Category' : 'Analytics Dashboard' }}
+                  {{ selectedCategory.isCustom ? 'Custom Category Analytics' : 'Analytics Dashboard' }}
                 </p>
               </div>
             </div>
@@ -94,10 +94,12 @@
         <!-- existing main content -->
         <div class="mb-8 animate-fade-in">
           <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-            {{ selectedCategory.name }} Analytics
+            {{ selectedCategory.categoryName }} Analytics
           </h2>
           <p class="text-lg text-gray-600 leading-relaxed max-w-4xl">
-            {{ selectedCategory.description }}
+            <a href="https://commons.wikimedia.org/wiki/Category:{{ selectedCategory.slug }}" target="_blank" rel="noopener noreferrer" class="text-wikimedia-blue hover:text-wikimedia-green transition-colors duration-200">
+              View Category on Wikimedia Commons
+            </a>
           </p>
           <!-- Custom category info -->
           <div v-if="selectedCategory.isCustom && categoryValidation" class="mt-4">
@@ -248,7 +250,7 @@ const selectCustomCategory = async (category) => {
   }
   
   // Fetch data regardless of validation (server might have different data)
-  fetchData(category.categoryName, true);
+  fetchData(category.name, true);
 };
 
 const backToHome = () => {

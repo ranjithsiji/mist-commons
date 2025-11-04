@@ -83,7 +83,7 @@ export function useApi() {
     try {
       // For custom categories, we need to send them as custom parameter
       const params = new URLSearchParams({
-        sample: '1',
+        //sample: '1',
         category: categoryName
       });
       
