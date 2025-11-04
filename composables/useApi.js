@@ -86,11 +86,6 @@ export function useApi() {
         category: categoryName
       });
       
-      // Add mock parameter for testing (you can remove this later)
-      if (import.meta.env.DEV || import.meta.env.VITE_DEV_MOCK_DATA) {
-        params.append('mock', '1');
-      }
-      
       // Add custom flag if it's a user-defined category
       if (isCustomCategory) {
         params.append('custom', '1');
@@ -107,7 +102,14 @@ export function useApi() {
       }
       
       const jsonData = await response.json();
-      console.log('Dashboard response:', jsonData);
+      console.log('Dashboard response structure:', {
+        success: jsonData.success,
+        hasRows: Array.isArray(jsonData.rows),
+        rowCount: jsonData.rows ? jsonData.rows.length : 0,
+        hasData: Array.isArray(jsonData.data),
+        dataCount: jsonData.data ? jsonData.data.length : 0,
+        hasStatistics: !!jsonData.statistics
+      });
       
       if (!jsonData.success) {
         throw new Error(jsonData.error || 'Failed to fetch dashboard data');
@@ -170,7 +172,7 @@ export function useApi() {
     }
   };
 
-  // Mock data for development/fallback
+  // Mock data for development/fallback - in original rows format
   const getMockCategories = () => {
     return [
       {
@@ -210,93 +212,53 @@ export function useApi() {
   };
 
   const getMockDashboardData = (categoryName) => {
-    // Return data in new API format to match backend
+    // Return data in original rows format
+    const mockRows = [];
+    for (let i = 1; i <= 10; i++) {
+      const daysAgo = Math.floor(Math.random() * 30);
+      const date = new Date();
+      date.setDate(date.getDate() - daysAgo);
+      const imgdate = date.toISOString().slice(0, 10).replace(/-/g, '');
+      const timestamp = imgdate + '120000';
+      
+      // Some files have GPS metadata, others don't
+      let metadata = '{}';
+      if (i % 3 === 0) { // Every 3rd file has GPS
+        metadata = JSON.stringify({
+          data: {
+            GPSLatitude: 10.0 + Math.random() * 2,
+            GPSLongitude: 76.0 + Math.random() * 2,
+            Model: 'Canon EOS 5D Mark IV'
+          }
+        });
+      } else if (i % 2 === 0) { // Every 2nd file has camera info
+        metadata = JSON.stringify({
+          data: {
+            Model: ['Nikon D850', 'Sony Alpha 7R IV'][Math.floor(Math.random() * 2)]
+          }
+        });
+      }
+      
+      mockRows.push([
+        i,
+        categoryName,
+        `Sample_Image_${i}.jpg`,
+        imgdate,
+        timestamp,
+        Math.floor(Math.random() * 10000000) + 1000000, // 1-11MB
+        metadata,
+        ['TestUser1', 'TestUser2', 'TestUser3'][Math.floor(Math.random() * 3)]
+      ]);
+    }
+    
     return {
       success: true,
-      data: [
-        {
-          id: 1,
-          category: categoryName,
-          filename: 'Sample_Image_1.jpg',
-          page_title: 'Sample_Image_1.jpg',
-          upload_date: '2024-10-01',
-          imgdate: '20241001',
-          timestamp: '20241001120000',
-          size_bytes: 2048000,
-          size_mb: 1.95,
-          dimensions: { width: 3000, height: 2000 },
-          media_type: 'BITMAP',
-          mime_type: 'image/jpeg',
-          uploader: 'SampleUser1',
-          has_gps: true,
-          metadata_available: true
-        },
-        {
-          id: 2,
-          category: categoryName,
-          filename: 'Sample_Image_2.jpg',
-          page_title: 'Sample_Image_2.jpg',
-          upload_date: '2024-10-02',
-          imgdate: '20241002',
-          timestamp: '20241002130000',
-          size_bytes: 3072000,
-          size_mb: 2.93,
-          dimensions: { width: 4000, height: 3000 },
-          media_type: 'BITMAP',
-          mime_type: 'image/jpeg',
-          uploader: 'SampleUser2',
-          has_gps: false,
-          metadata_available: true
-        },
-        {
-          id: 3,
-          category: categoryName,
-          filename: 'Sample_Image_3.jpg',
-          page_title: 'Sample_Image_3.jpg',
-          upload_date: '2024-10-03',
-          imgdate: '20241003',
-          timestamp: '20241003140000',
-          size_bytes: 1536000,
-          size_mb: 1.46,
-          dimensions: { width: 2500, height: 1800 },
-          media_type: 'BITMAP',
-          mime_type: 'image/jpeg',
-          uploader: 'SampleUser1',
-          has_gps: true,
-          metadata_available: true
-        }
-      ],
-      statistics: {
-        total_files: 3,
-        total_size_bytes: 6656000,
-        total_size_mb: 6.35,
-        uploaders: {
-          'SampleUser1': 2,
-          'SampleUser2': 1
-        },
-        file_types: {
-          'image/jpeg': 3
-        },
-        upload_timeline: {
-          '2024-10': 3
-        },
-        gps_enabled_count: 2,
-        unique_uploaders: 2,
-        gps_percentage: 66.67,
-        top_uploaders: {
-          'SampleUser1': 2,
-          'SampleUser2': 1
-        }
-      },
-      meta: {
-        category: categoryName,
-        query_time_ms: 50,
-        total_records: 3,
-        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-        database: 'mock_data',
-        mock_data: true,
-        cached: false
-      }
+      rows: mockRows,
+      count: mockRows.length,
+      timestamp: new Date().toISOString(),
+      category: categoryName,
+      cached: false,
+      mock_data: true
     };
   };
 
