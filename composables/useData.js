@@ -4,110 +4,126 @@ export function useDataProcessor() {
   const processData = (jsonData) => {
     console.log('Processing API data:', jsonData);
     
-    // Use API statistics directly when available (much more reliable)
-    let apiStats = jsonData.statistics || {};
+    // Handle the original "rows" format from Quarry SQL output
+    const rows = jsonData.rows || [];
+    if (rows.length === 0) {
+      console.warn('No data rows found in API response');
+      return getEmptyStats();
+    }
     
-    // Basic statistics - use API stats directly
-    const uniqueUsers = apiStats.unique_uploaders || 0;
-    const totalFiles = apiStats.total_files || 0;
-    const totalSize = apiStats.total_size_bytes || 0;
-    const geotaggedFiles = apiStats.gps_enabled_count || 0;
+    // Process each row to extract statistics
+    const uniqueUsers = new Set(rows.map(r => r[7])).size;
+    const totalFiles = rows.length;
+    const totalSize = rows.reduce((sum, r) => sum + (parseInt(r[5]) || 0), 0);
+    const uniqueDates = new Set(rows.map(r => r[3])).size;
     
-    // Calculate unique dates from data
-    const uniqueDates = jsonData.data ? new Set(jsonData.data.map(item => item.upload_date)).size : 0;
-    
-    // Process real geolocation data from GPS coordinates
+    // Process geolocation data from metadata
     const geoLocations = [];
-    if (jsonData.data && Array.isArray(jsonData.data)) {
-      jsonData.data.forEach(item => {
-        if (item.has_gps && item.gps_latitude && item.gps_longitude) {
-          // Use actual GPS coordinates from EXIF data
-          const lat = parseFloat(item.gps_latitude);
-          const lon = parseFloat(item.gps_longitude);
+    let geotaggedCount = 0;
+    
+    rows.forEach(row => {
+      try {
+        const metadataJson = row[6];
+        if (metadataJson && metadataJson !== '{}') {
+          const metadata = JSON.parse(metadataJson);
+          const lat = metadata?.data?.GPSLatitude;
+          const lon = metadata?.data?.GPSLongitude;
           
-          // Validate coordinates are within reasonable bounds
-          if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
-            geoLocations.push({
-              lat: lat,
-              lon: lon,
-              filename: item.filename,
-              author: item.uploader || 'Unknown',
-              date: item.upload_date,
-              thumbnail: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(item.filename)}?width=300`,
-              commonsUrl: `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(item.filename)}`
-            });
+          if (lat && lon && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lon))) {
+            const latitude = parseFloat(lat);
+            const longitude = parseFloat(lon);
+            
+            // Validate coordinates are within reasonable bounds
+            if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
+              geotaggedCount++;
+              
+              const filename = row[2];
+              const date = row[3];
+              const formattedDate = date ? `${date.slice(0,4)}-${date.slice(4,6)}-${date.slice(6,8)}` : 'Unknown';
+              
+              geoLocations.push({
+                lat: latitude,
+                lon: longitude,
+                filename: filename,
+                author: row[7] || 'Unknown',
+                date: formattedDate,
+                thumbnail: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=300`,
+                commonsUrl: `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(filename)}`
+              });
+            }
           }
         }
-      });
-    }
+      } catch (e) {
+        // Skip invalid metadata, don't log as this is common
+      }
+    });
     
-    console.log(`Found ${geoLocations.length} geotagged images with valid coordinates`);
+    console.log(`Found ${geoLocations.length} valid GPS coordinates from ${geotaggedCount} geotagged files`);
     
-    // User contributions with actual file sizes
-    let userContribArray = [];
-    if (apiStats.top_uploaders && jsonData.data) {
-      // Calculate size per user from the actual data
-      const userSizes = {};
-      jsonData.data.forEach(item => {
-        const user = item.uploader;
-        if (!userSizes[user]) {
-          userSizes[user] = 0;
-        }
-        userSizes[user] += item.size_bytes || 0;
-      });
-      
-      userContribArray = Object.entries(apiStats.top_uploaders)
-        .map(([name, count]) => ({
-          name,
-          files: count,
-          sizeMB: ((userSizes[name] || 0) / (1024 * 1024)).toFixed(2)
-        }))
-        .sort((a, b) => b.files - a.files);
-    }
+    // User contributions with actual sizes
+    const userContributions = {};
+    rows.forEach(row => {
+      const user = row[7];
+      if (!userContributions[user]) {
+        userContributions[user] = { count: 0, size: 0 };
+      }
+      userContributions[user].count++;
+      userContributions[user].size += parseInt(row[5]) || 0;
+    });
+    
+    const userContribArray = Object.entries(userContributions)
+      .map(([name, data]) => ({
+        name,
+        files: data.count,
+        sizeMB: (data.size / (1024 * 1024)).toFixed(2)
+      }))
+      .sort((a, b) => b.files - a.files);
     
     // Daily uploads from actual data
-    let dailyUploadArray = [];
-    if (jsonData.data && Array.isArray(jsonData.data)) {
-      const dailyUploads = {};
-      jsonData.data.forEach(item => {
-        const date = item.upload_date;
-        if (date) {
-          dailyUploads[date] = (dailyUploads[date] || 0) + 1;
-        }
-      });
-      
-      dailyUploadArray = Object.entries(dailyUploads)
-        .map(([date, count]) => ({ date, uploads: count }))
-        .sort((a, b) => a.date.localeCompare(b.date));
-    }
+    const dailyUploads = {};
+    rows.forEach(row => {
+      const date = row[3];
+      if (date && date.length === 8) {
+        const formattedDate = `${date.slice(0,4)}-${date.slice(4,6)}-${date.slice(6,8)}`;
+        dailyUploads[formattedDate] = (dailyUploads[formattedDate] || 0) + 1;
+      }
+    });
+    
+    const dailyUploadArray = Object.entries(dailyUploads)
+      .map(([date, count]) => ({ date, uploads: count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
     
     // Hourly distribution from timestamps
     const hourlyDistribution = Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 }));
-    if (jsonData.data && Array.isArray(jsonData.data)) {
-      jsonData.data.forEach(item => {
-        const timestamp = item.timestamp;
-        if (timestamp && timestamp.length >= 10) {
-          try {
-            const hour = parseInt(timestamp.slice(8, 10)); // Extract hour from YYYYMMDDHHmmss
-            if (hour >= 0 && hour <= 23) {
-              hourlyDistribution[hour].count++;
-            }
-          } catch (e) {
-            // Skip invalid timestamps
+    rows.forEach(row => {
+      const timestamp = row[4]; // Full timestamp
+      if (timestamp && timestamp.length >= 10) {
+        try {
+          const hour = parseInt(timestamp.slice(8, 10)); // Extract hour from YYYYMMDDHHmmss
+          if (hour >= 0 && hour <= 23) {
+            hourlyDistribution[hour].count++;
           }
+        } catch (e) {
+          // Skip invalid timestamps
         }
-      });
-    }
+      }
+    });
     
-    // Monthly activity from API timeline
-    let monthlyActivityArray = [];
-    if (apiStats.upload_timeline) {
-      monthlyActivityArray = Object.entries(apiStats.upload_timeline)
-        .map(([month, count]) => ({ month, count }))
-        .sort((a, b) => a.month.localeCompare(b.month));
-    }
+    // Monthly activity
+    const monthlyActivity = {};
+    rows.forEach(row => {
+      const date = row[3];
+      if (date && date.length >= 6) {
+        const monthKey = `${date.slice(0,4)}-${date.slice(4,6)}`; // YYYY-MM
+        monthlyActivity[monthKey] = (monthlyActivity[monthKey] || 0) + 1;
+      }
+    });
     
-    // File size distribution based on actual data - use realistic ranges
+    const monthlyActivityArray = Object.entries(monthlyActivity)
+      .map(([month, count]) => ({ month, count }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+    
+    // File size distribution based on actual file sizes
     const sizeRanges = {
       '< 1 MB': 0,
       '1-5 MB': 0,
@@ -116,51 +132,71 @@ export function useDataProcessor() {
       '> 15 MB': 0
     };
     
-    if (jsonData.data && Array.isArray(jsonData.data)) {
-      jsonData.data.forEach(item => {
-        const sizeMB = item.size_mb || 0;
-        if (sizeMB < 1) sizeRanges['< 1 MB']++;
-        else if (sizeMB < 5) sizeRanges['1-5 MB']++;
-        else if (sizeMB < 10) sizeRanges['5-10 MB']++;
-        else if (sizeMB < 15) sizeRanges['10-15 MB']++;
-        else sizeRanges['> 15 MB']++;
-      });
-    }
+    rows.forEach(row => {
+      const sizeMB = (parseInt(row[5]) || 0) / (1024 * 1024);
+      if (sizeMB < 1) sizeRanges['< 1 MB']++;
+      else if (sizeMB < 5) sizeRanges['1-5 MB']++;
+      else if (sizeMB < 10) sizeRanges['5-10 MB']++;
+      else if (sizeMB < 15) sizeRanges['10-15 MB']++;
+      else sizeRanges['> 15 MB']++;
+    });
     
     const sizeDistribution = Object.entries(sizeRanges)
       .map(([range, count]) => ({ range, count }))
-      .filter(item => item.count > 0); // Only show ranges with data
+      .filter(item => item.count > 0);
     
-    // Camera models from API statistics (now properly parsed from EXIF)
-    let cameraData = [];
-    if (apiStats.top_camera_models) {
-      cameraData = Object.entries(apiStats.top_camera_models)
-        .map(([model, count]) => ({ model, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-    } else if (apiStats.camera_models) {
-      cameraData = Object.entries(apiStats.camera_models)
-        .map(([model, count]) => ({ model, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-    }
-    
-    // If no camera data, try to extract from individual files
-    if (cameraData.length === 0 && jsonData.data && Array.isArray(jsonData.data)) {
-      const cameraCounts = {};
-      jsonData.data.forEach(item => {
-        const camera = item.camera_model || 'Unknown Camera';
-        if (!cameraCounts[camera]) {
-          cameraCounts[camera] = 0;
+    // Camera models from metadata
+    const cameraModels = {};
+    rows.forEach(row => {
+      try {
+        const metadataJson = row[6];
+        if (metadataJson && metadataJson !== '{}') {
+          const metadata = JSON.parse(metadataJson);
+          const model = metadata?.data?.Model;
+          if (model && model.trim() !== '') {
+            cameraModels[model] = (cameraModels[model] || 0) + 1;
+          }
         }
-        cameraCounts[camera]++;
-      });
+      } catch (e) {
+        // Skip invalid metadata
+      }
+    });
+    
+    // Add filename-based camera detection as fallback
+    let unknownCameraCount = 0;
+    rows.forEach(row => {
+      const filename = row[2].toUpperCase();
+      let detected = false;
       
-      cameraData = Object.entries(cameraCounts)
-        .map(([model, count]) => ({ model, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
+      // Check if we already have camera info for this file
+      try {
+        const metadata = JSON.parse(row[6] || '{}');
+        if (metadata?.data?.Model) {
+          detected = true;
+        }
+      } catch (e) {}
+      
+      if (!detected) {
+        if (filename.includes('DSC_')) {
+          cameraModels['Nikon DSLR'] = (cameraModels['Nikon DSLR'] || 0) + 1;
+        } else if (filename.includes('IMG_')) {
+          cameraModels['Canon DSLR'] = (cameraModels['Canon DSLR'] || 0) + 1;
+        } else if (filename.includes('IMG') && filename.includes('202')) {
+          cameraModels['Smartphone'] = (cameraModels['Smartphone'] || 0) + 1;
+        } else {
+          unknownCameraCount++;
+        }
+      }
+    });
+    
+    if (unknownCameraCount > 0) {
+      cameraModels['Unknown Camera'] = unknownCameraCount;
     }
+    
+    const cameraData = Object.entries(cameraModels)
+      .map(([model, count]) => ({ model, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
     
     const result = {
       stats: {
@@ -169,7 +205,7 @@ export function useDataProcessor() {
         uniqueDates,
         totalSize,
         avgFileSize: totalFiles > 0 ? totalSize / totalFiles : 0,
-        geotaggedFiles
+        geotaggedFiles: geotaggedCount
       },
       data: {
         userContributions: userContribArray,
@@ -186,19 +222,43 @@ export function useDataProcessor() {
       stats: {
         users: result.stats.uniqueUsers,
         files: result.stats.totalFiles,
+        dates: result.stats.uniqueDates,
         sizeMB: (result.stats.totalSize / 1024 / 1024).toFixed(2),
         geotagged: result.stats.geotaggedFiles,
-        actualGeoPoints: result.geoData.length
+        validGeoPoints: result.geoData.length
       },
       distributions: {
-        topContributors: result.data.userContributions.slice(0, 3).map(u => `${u.name}: ${u.files} files`),
-        sizeBuckets: result.data.sizeDistribution.map(s => `${s.range}: ${s.count}`),
-        topCameras: result.data.cameraData.slice(0, 3).map(c => `${c.model}: ${c.count}`),
-        uploadDates: result.data.dailyUploads.length
+        contributors: result.data.userContributions.length,
+        sizeBuckets: result.data.sizeDistribution.length,
+        cameras: result.data.cameraData.length,
+        uploadDays: result.data.dailyUploads.length
       }
     });
     
     return result;
+  };
+  
+  // Helper function for empty stats
+  const getEmptyStats = () => {
+    return {
+      stats: {
+        uniqueUsers: 0,
+        totalFiles: 0,
+        uniqueDates: 0,
+        totalSize: 0,
+        avgFileSize: 0,
+        geotaggedFiles: 0
+      },
+      data: {
+        userContributions: [],
+        dailyUploads: [],
+        hourlyDistribution: Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 })),
+        monthlyActivity: [],
+        sizeDistribution: [],
+        cameraData: []
+      },
+      geoData: []
+    };
   };
 
   return {
