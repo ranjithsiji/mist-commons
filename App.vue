@@ -30,7 +30,9 @@
               </button>
               <div>
                 <h1 class="text-xl font-bold text-gray-900">{{ selectedCategory.name }}</h1>
-                <p class="text-sm text-gray-500 hidden sm:block">Analytics Dashboard</p>
+                <p class="text-sm text-gray-500 hidden sm:block">
+                  {{ selectedCategory.isCustom ? 'Custom Category' : 'Analytics Dashboard' }}
+                </p>
               </div>
             </div>
             
@@ -97,6 +99,46 @@
           <p class="text-lg text-gray-600 leading-relaxed max-w-4xl">
             {{ selectedCategory.description }}
           </p>
+          <!-- Custom category info -->
+          <div v-if="selectedCategory.isCustom && categoryValidation" class="mt-4">
+            <div 
+              :class="[
+                'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium',
+                categoryValidation.exists 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-yellow-100 text-yellow-800'
+              ]"
+            >
+              <svg 
+                :class="[
+                  'w-4 h-4 mr-2',
+                  categoryValidation.exists ? 'text-green-600' : 'text-yellow-600'
+                ]" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  v-if="categoryValidation.exists"
+                  stroke-linecap="round" 
+                  stroke-linejoin="round" 
+                  stroke-width="2" 
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+                <path 
+                  v-else
+                  stroke-linecap="round" 
+                  stroke-linejoin="round" 
+                  stroke-width="2" 
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 15.5c-.77.833.192 2.5 1.732 2.5z"
+                ></path>
+              </svg>
+              {{ categoryValidation.exists 
+                ? `Valid category with ${categoryValidation.pageCount} pages` 
+                : 'Category not found on Commons' 
+              }}
+            </div>
+          </div>
         </div>
 
         <div v-if="error" class="bg-red-50 border-l-4 border-red-400 text-red-700 p-6 rounded-xl mb-8 shadow-lg animate-slide-up">
@@ -107,6 +149,10 @@
             <div>
               <h3 class="font-medium">Error Loading Data</h3>
               <p class="text-sm mt-1">{{ error }}</p>
+              <div v-if="selectedCategory.isCustom && !categoryValidation?.exists" class="text-sm mt-2">
+                <p>This category may not exist on Wikimedia Commons.</p>
+                <p>Please check the category name and try again.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -117,7 +163,12 @@
             <div class="absolute inset-0 w-20 h-20 border-4 border-transparent border-r-wikimedia-green rounded-full animate-spin" style="animation-delay: -0.5s; animation-direction: reverse;"></div>
           </div>
           <h3 class="text-2xl font-semibold text-gray-700 mb-4">Loading Dashboard Data</h3>
-          <p class="text-gray-600 mb-2">Fetching analytics from Wikimedia Commons...</p>
+          <p class="text-gray-600 mb-2">
+            {{ selectedCategory.isCustom 
+              ? 'Analyzing custom category from Wikimedia Commons...' 
+              : 'Fetching analytics from Wikimedia Commons...' 
+            }}
+          </p>
           <div class="flex justify-center items-center space-x-2 text-sm text-gray-500">
             <div class="w-2 h-2 bg-wikimedia-blue rounded-full animate-bounce"></div>
             <div class="w-2 h-2 bg-wikimedia-green rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
@@ -150,7 +201,7 @@ import Footer from './components/Footer.vue';
 import { useApi } from './composables/useApi';
 import { useDataProcessor } from './composables/useData';
 
-const { loading, error, fetchCategories, fetchDashboardData } = useApi();
+const { loading, error, fetchCategories, fetchDashboardData, validateCategory } = useApi();
 const { processData } = useDataProcessor();
 
 const categories = ref([]);
@@ -160,6 +211,7 @@ const stats = ref(null);
 const geoData = ref([]);
 const loadingCategories = ref(false);
 const mobileMenuOpen = ref(false);
+const categoryValidation = ref(null);
 
 const loadCategories = async () => {
   loadingCategories.value = true;
@@ -175,16 +227,28 @@ const loadCategories = async () => {
 
 const selectCategory = (category) => {
   selectedCategory.value = category;
+  categoryValidation.value = null;
   mobileMenuOpen.value = false;
   updateURL(category.slug);
-  fetchData(category.categoryName);
+  fetchData(category.categoryName, false);
 };
 
-const selectCustomCategory = (category) => {
+const selectCustomCategory = async (category) => {
   selectedCategory.value = category;
   mobileMenuOpen.value = false;
   updateURL(category.slug);
-  fetchData(category.categoryName);
+  
+  // Validate the custom category
+  try {
+    categoryValidation.value = await validateCategory(category.categoryName);
+    console.log('Category validation:', categoryValidation.value);
+  } catch (err) {
+    console.error('Category validation error:', err);
+    categoryValidation.value = { exists: false, error: err.message };
+  }
+  
+  // Fetch data regardless of validation (server might have different data)
+  fetchData(category.categoryName, true);
 };
 
 const backToHome = () => {
@@ -192,6 +256,7 @@ const backToHome = () => {
   dashboardData.value = null;
   stats.value = null;
   geoData.value = [];
+  categoryValidation.value = null;
   mobileMenuOpen.value = false;
   updateURL('');
 };
@@ -213,9 +278,9 @@ const loadFromURL = () => {
   }
 };
 
-const fetchData = async (categoryName) => {
+const fetchData = async (categoryName, isCustom = false) => {
   try {
-    const jsonData = await fetchDashboardData(categoryName);
+    const jsonData = await fetchDashboardData(categoryName, isCustom);
     const processed = processData(jsonData);
     
     stats.value = processed.stats;
@@ -223,12 +288,13 @@ const fetchData = async (categoryName) => {
     geoData.value = processed.geoData;
   } catch (err) {
     console.error('Error fetching data:', err);
+    // Don't clear existing data on error, let user see the error message
   }
 };
 
 const refreshData = () => {
   if (selectedCategory.value) {
-    fetchData(selectedCategory.value.categoryName);
+    fetchData(selectedCategory.value.categoryName, selectedCategory.value.isCustom);
   }
 };
 
