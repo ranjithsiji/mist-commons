@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Frontend Data Processing</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        pre { background: #f5f5f5; padding: 20px; border-radius: 8px; overflow-x: auto; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .error { color: red; }
+        .success { color: green; }
+        button { padding: 10px 20px; margin: 10px 0; background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005a87; }
+    </style>
+</head>
+<body>
+    <h1>Mist Commons Frontend Debug Tool</h1>
+    
+    <div class="section">
+        <h2>1. Test API Connection</h2>
+        <button onclick="testAPI()">Test API Endpoint</button>
+        <div id="api-result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. Test Data Processing</h2>
+        <button onclick="testDataProcessing()">Test Data Processing</button>
+        <div id="processing-result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. Sample Response Data</h2>
+        <p>This is the sample response your API should return:</p>
+        <pre id="sample-data"></pre>
+    </div>
+
+    <script>
+        // Sample data that matches your API response
+        const sampleResponse = {
+            "success": true,
+            "data": [
+                {
+                    "id": 1,
+                    "category": "Images_from_Wiki_Loves_Birds_India_2024_(maintenance-earth)",
+                    "filename": "Sample_Photo_1.jpg",
+                    "page_title": "Sample_Photo_1.jpg",
+                    "upload_date": "2025-05-19",
+                    "imgdate": "20250519",
+                    "timestamp": "20250519171830",
+                    "size_bytes": 2763670,
+                    "size_mb": 2.64,
+                    "dimensions": {"width": 4823, "height": 3289},
+                    "media_type": "BITMAP",
+                    "mime_type": "image/png",
+                    "uploader": "NaturePhotographer123",
+                    "has_gps": true,
+                    "metadata_available": true
+                },
+                {
+                    "id": 2,
+                    "category": "Images_from_Wiki_Loves_Birds_India_2024_(maintenance-earth)",
+                    "filename": "Sample_Photo_2.jpg",
+                    "page_title": "Sample_Photo_2.jpg",
+                    "upload_date": "2024-12-23",
+                    "imgdate": "20241223",
+                    "timestamp": "20241223171830",
+                    "size_bytes": 4104580,
+                    "size_mb": 3.91,
+                    "dimensions": {"width": 3702, "height": 1814},
+                    "media_type": "BITMAP",
+                    "mime_type": "image/png",
+                    "uploader": "NaturePhotographer123",
+                    "has_gps": false,
+                    "metadata_available": true
+                }
+            ],
+            "statistics": {
+                "total_files": 2,
+                "total_size_bytes": 6868250,
+                "total_size_mb": 6.55,
+                "uploaders": {
+                    "NaturePhotographer123": 2
+                },
+                "file_types": {
+                    "image/png": 2
+                },
+                "upload_timeline": {
+                    "2024-12": 1,
+                    "2025-05": 1
+                },
+                "gps_enabled_count": 1,
+                "unique_uploaders": 1,
+                "gps_percentage": 50,
+                "top_uploaders": {
+                    "NaturePhotographer123": 2
+                }
+            },
+            "meta": {
+                "category": "Images_from_Wiki_Loves_Birds_India_2024_(maintenance-earth)",
+                "query_time_ms": 227,
+                "total_records": 2,
+                "timestamp": "2025-11-04 17:18:30",
+                "database": "mock_data",
+                "mock_data": true,
+                "cached": false
+            }
+        };
+
+        // Simplified data processing function (based on your useData.js)
+        function processData(jsonData) {
+            console.log('Processing data:', jsonData);
+            
+            let apiStats = jsonData.statistics || {};
+            
+            const stats = {
+                uniqueUsers: apiStats.unique_uploaders || 0,
+                totalFiles: apiStats.total_files || 0,
+                totalSize: apiStats.total_size_bytes || 0,
+                avgFileSize: apiStats.total_files > 0 ? (apiStats.total_size_bytes / apiStats.total_files) : 0,
+                geotaggedFiles: apiStats.gps_enabled_count || 0,
+                uniqueDates: 1 // Simplified for testing
+            };
+            
+            const userContributions = Object.entries(apiStats.top_uploaders || {})
+                .map(([name, count]) => ({ name, files: count, sizeMB: '0.00' }));
+            
+            const geoData = (jsonData.data || []).filter(item => item.has_gps).map(item => ({
+                lat: Math.random() * 30 + 8,
+                lon: Math.random() * 35 + 68,
+                filename: item.filename,
+                author: item.uploader,
+                date: item.upload_date
+            }));
+            
+            return {
+                stats,
+                data: {
+                    userContributions,
+                    dailyUploads: [],
+                    hourlyDistribution: [],
+                    monthlyActivity: [],
+                    sizeDistribution: [],
+                    cameraData: []
+                },
+                geoData
+            };
+        }
+
+        async function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = '<p>Testing API...</p>';
+            
+            try {
+                const response = await fetch('/api/dashboard.php?category=Test&mock=1');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ API Success!</p>
+                        <p>Records: ${data.data ? data.data.length : 'N/A'}</p>
+                        <p>Total Files: ${data.statistics ? data.statistics.total_files : 'N/A'}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ API Error: ${data.error}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Network Error: ${error.message}</p>`;
+            }
+        }
+
+        function testDataProcessing() {
+            const resultDiv = document.getElementById('processing-result');
+            
+            try {
+                const processed = processData(sampleResponse);
+                
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Data Processing Success!</p>
+                    <h3>Processed Stats:</h3>
+                    <ul>
+                        <li>Unique Users: ${processed.stats.uniqueUsers}</li>
+                        <li>Total Files: ${processed.stats.totalFiles}</li>
+                        <li>Total Size: ${processed.stats.totalSize} bytes</li>
+                        <li>Geotagged Files: ${processed.stats.geotaggedFiles}</li>
+                    </ul>
+                    <h3>User Contributions:</h3>
+                    <ul>
+                        ${processed.data.userContributions.map(user => 
+                            `<li>${user.name}: ${user.files} files</li>`
+                        ).join('')}
+                    </ul>
+                    <h3>Geo Data:</h3>
+                    <p>Found ${processed.geoData.length} geotagged images</p>
+                    <pre>${JSON.stringify(processed, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Processing Error: ${error.message}</p>`;
+            }
+        }
+
+        // Show sample data on load
+        document.getElementById('sample-data').textContent = JSON.stringify(sampleResponse, null, 2);
+
+        // Auto-test on page load
+        window.onload = function() {
+            testDataProcessing();
+        };
+    </script>
+</body>
+</html>
