@@ -81,11 +81,15 @@ export function useApi() {
     error.value = '';
     
     try {
-      // For custom categories, we need to send them as custom parameter
+      // Build parameters for API call
       const params = new URLSearchParams({
-        //sample: '1',
         category: categoryName
       });
+      
+      // Add mock parameter for testing (you can remove this later)
+      if (import.meta.env.DEV || import.meta.env.VITE_DEV_MOCK_DATA) {
+        params.append('mock', '1');
+      }
       
       // Add custom flag if it's a user-defined category
       if (isCustomCategory) {
@@ -206,17 +210,93 @@ export function useApi() {
   };
 
   const getMockDashboardData = (categoryName) => {
+    // Return data in new API format to match backend
     return {
       success: true,
-      rows: [
-        [1, categoryName, 'Sample_Image_1.jpg', '20241001', '20241001120000', 2048000, '{"data":{"Model":"Canon EOS 5D","GPSLatitude":28.6139,"GPSLongitude":77.2090}}', 'SampleUser1'],
-        [2, categoryName, 'Sample_Image_2.jpg', '20241002', '20241002130000', 3072000, '{"data":{"Model":"Nikon D850"}}', 'SampleUser2'],
-        [3, categoryName, 'Sample_Image_3.jpg', '20241003', '20241003140000', 1536000, '{"data":{"Model":"Sony Alpha 7R"}}', 'SampleUser1'],
+      data: [
+        {
+          id: 1,
+          category: categoryName,
+          filename: 'Sample_Image_1.jpg',
+          page_title: 'Sample_Image_1.jpg',
+          upload_date: '2024-10-01',
+          imgdate: '20241001',
+          timestamp: '20241001120000',
+          size_bytes: 2048000,
+          size_mb: 1.95,
+          dimensions: { width: 3000, height: 2000 },
+          media_type: 'BITMAP',
+          mime_type: 'image/jpeg',
+          uploader: 'SampleUser1',
+          has_gps: true,
+          metadata_available: true
+        },
+        {
+          id: 2,
+          category: categoryName,
+          filename: 'Sample_Image_2.jpg',
+          page_title: 'Sample_Image_2.jpg',
+          upload_date: '2024-10-02',
+          imgdate: '20241002',
+          timestamp: '20241002130000',
+          size_bytes: 3072000,
+          size_mb: 2.93,
+          dimensions: { width: 4000, height: 3000 },
+          media_type: 'BITMAP',
+          mime_type: 'image/jpeg',
+          uploader: 'SampleUser2',
+          has_gps: false,
+          metadata_available: true
+        },
+        {
+          id: 3,
+          category: categoryName,
+          filename: 'Sample_Image_3.jpg',
+          page_title: 'Sample_Image_3.jpg',
+          upload_date: '2024-10-03',
+          imgdate: '20241003',
+          timestamp: '20241003140000',
+          size_bytes: 1536000,
+          size_mb: 1.46,
+          dimensions: { width: 2500, height: 1800 },
+          media_type: 'BITMAP',
+          mime_type: 'image/jpeg',
+          uploader: 'SampleUser1',
+          has_gps: true,
+          metadata_available: true
+        }
       ],
-      count: 3,
-      timestamp: new Date().toISOString(),
-      category: categoryName,
-      cached: false
+      statistics: {
+        total_files: 3,
+        total_size_bytes: 6656000,
+        total_size_mb: 6.35,
+        uploaders: {
+          'SampleUser1': 2,
+          'SampleUser2': 1
+        },
+        file_types: {
+          'image/jpeg': 3
+        },
+        upload_timeline: {
+          '2024-10': 3
+        },
+        gps_enabled_count: 2,
+        unique_uploaders: 2,
+        gps_percentage: 66.67,
+        top_uploaders: {
+          'SampleUser1': 2,
+          'SampleUser2': 1
+        }
+      },
+      meta: {
+        category: categoryName,
+        query_time_ms: 50,
+        total_records: 3,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        database: 'mock_data',
+        mock_data: true,
+        cached: false
+      }
     };
   };
 
