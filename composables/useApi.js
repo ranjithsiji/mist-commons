@@ -72,7 +72,7 @@ export function useApi() {
     }
   };
 
-  const fetchDashboardData = async (categoryName) => {
+  const fetchDashboardData = async (categoryName, isCustomCategory = false) => {
     if (!categoryName) {
       throw new Error('Category name is required');
     }
@@ -81,7 +81,18 @@ export function useApi() {
     error.value = '';
     
     try {
-      const url = `${API_BASE_URL}/dashboard.php?sample=1&category=${encodeURIComponent(categoryName)}`;
+      // For custom categories, we need to send them as custom parameter
+      const params = new URLSearchParams({
+        sample: '1',
+        category: categoryName
+      });
+      
+      // Add custom flag if it's a user-defined category
+      if (isCustomCategory) {
+        params.append('custom', '1');
+      }
+      
+      const url = `${API_BASE_URL}/dashboard.php?${params.toString()}`;
       console.log('Fetching dashboard data from:', url);
       
       const response = await fetchWithTimeout(url);
@@ -113,6 +124,45 @@ export function useApi() {
       throw new Error(errorMessage);
     } finally {
       loading.value = false;
+    }
+  };
+
+  // Function to validate if a category exists on Commons
+  const validateCategory = async (categoryName) => {
+    try {
+      const apiUrl = 'https://commons.wikimedia.org/w/api.php';
+      let searchQuery = categoryName;
+      
+      // Add "Category:" prefix if not present
+      if (!searchQuery.startsWith('Category:')) {
+        searchQuery = `Category:${categoryName}`;
+      }
+      
+      const params = new URLSearchParams({
+        action: 'query',
+        format: 'json',
+        origin: '*',
+        titles: searchQuery,
+        prop: 'categoryinfo|info',
+        formatversion: '2'
+      });
+      
+      const response = await fetch(`${apiUrl}?${params}`);
+      const data = await response.json();
+      
+      if (data.query && data.query.pages && data.query.pages.length > 0) {
+        const page = data.query.pages[0];
+        return {
+          exists: !page.missing,
+          pageCount: page.categoryinfo ? page.categoryinfo.pages : 0,
+          title: page.title
+        };
+      }
+      
+      return { exists: false, pageCount: 0, title: searchQuery };
+    } catch (error) {
+      console.error('Category validation error:', error);
+      return { exists: false, pageCount: 0, title: categoryName, error: error.message };
     }
   };
 
@@ -174,6 +224,7 @@ export function useApi() {
     loading,
     error,
     fetchCategories,
-    fetchDashboardData
+    fetchDashboardData,
+    validateCategory
   };
 }
