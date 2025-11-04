@@ -1,0 +1,19 @@
+[client]
+# Replace these with your actual Toolforge credentials
+# You can find these in your Toolforge account at:
+# https://toolsadmin.wikimedia.org/tools/id/YOUR_TOOL_NAME
+
+user = s12345        # Your Toolforge user ID (e.g., s12345)
+password = YOUR_PASSWORD_HERE
+
+# Optional SSL settings (usually not needed for Toolforge)
+# disable-ssl = true
+
+# This file should be named 'replica.my.cnf' (without .example)
+# and placed in one of these locations:
+# 1. /data/project/YOUR_TOOL_NAME/replica.my.cnf (recommended for Toolforge)
+# 2. api/replica.my.cnf (local development)
+# 3. ./replica.my.cnf (project root)
+
+# IMPORTANT: Never commit the actual replica.my.cnf file to Git!
+# Add it to .gitignore to keep your credentials secure.
