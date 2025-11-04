@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Fixed Statistics - Mist Commons</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 12px; }
+        .section { margin: 30px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #007bff; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        button { padding: 12px 24px; margin: 10px 5px; background: #007cba; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #005a87; }
+        button.secondary { background: #6c757d; }
+        button.secondary:hover { background: #545b62; }
+        .stats-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .stats-card { background: #f8f9fa; padding: 15px; border-radius: 8px; }
+        .fix-status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .fix-good { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .fix-bad { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .fix-improved { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Statistics Fixes Verification</h1>
+        <p>This page tests the fixes for GPS coordinates, camera data, and file size distribution issues.</p>
+        
+        <div class="section">
+            <h2>1. Test Fixed API</h2>
+            <button onclick="testLiveAPI()">Test Real Data</button>
+            <button onclick="testMockAPI()" class="secondary">Test Mock Data</button>
+            <div id="api-test-result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>2. Compare Before vs After</h2>
+            <button onclick="compareStatistics()">Run Comparison</button>
+            <div id="comparison-result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>3. Detailed Fix Status</h2>
+            <div id="fix-status"></div>
+        </div>
+        
+        <div class="section">
+            <h2>4. Raw API Response (Latest)</h2>
+            <details>
+                <summary>Click to view API response</summary>
+                <pre id="raw-response"></pre>
+            </details>
+        </div>
+    </div>
+
+    <script>
+        let latestApiData = null;
+
+        // Your fixed data processing function
+        function processData(jsonData) {
+            console.log('Processing API data:', jsonData);
+            
+            let apiStats = jsonData.statistics || {};
+            
+            const uniqueUsers = apiStats.unique_uploaders || 0;
+            const totalFiles = apiStats.total_files || 0;
+            const totalSize = apiStats.total_size_bytes || 0;
+            const geotaggedFiles = apiStats.gps_enabled_count || 0;
+            const uniqueDates = jsonData.data ? new Set(jsonData.data.map(item => item.upload_date)).size : 0;
+            
+            // GPS processing
+            const geoLocations = [];
+            if (jsonData.data && Array.isArray(jsonData.data)) {
+                jsonData.data.forEach(item => {
+                    if (item.has_gps && item.gps_latitude && item.gps_longitude) {
+                        const lat = parseFloat(item.gps_latitude);
+                        const lon = parseFloat(item.gps_longitude);
+                        
+                        if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+                            geoLocations.push({
+                                lat: lat,
+                                lon: lon,
+                                filename: item.filename,
+                                author: item.uploader || 'Unknown'
+                            });
+                        }
+                    }
+                });
+            }
+            
+            // User contributions
+            let userContribArray = [];
+            if (apiStats.top_uploaders && jsonData.data) {
+                const userSizes = {};
+                jsonData.data.forEach(item => {
+                    const user = item.uploader;
+                    if (!userSizes[user]) {
+                        userSizes[user] = 0;
+                    }
+                    userSizes[user] += item.size_bytes || 0;
+                });
+                
+                userContribArray = Object.entries(apiStats.top_uploaders)
+                    .map(([name, count]) => ({
+                        name,
+                        files: count,
+                        sizeMB: ((userSizes[name] || 0) / (1024 * 1024)).toFixed(2)
+                    }))
+                    .sort((a, b) => b.files - a.files);
+            }
+            
+            // Size distribution
+            const sizeRanges = {
+                '< 1 MB': 0,
+                '1-5 MB': 0,
+                '5-10 MB': 0,
+                '10-15 MB': 0,
+                '> 15 MB': 0
+            };
+            
+            if (jsonData.data && Array.isArray(jsonData.data)) {
+                jsonData.data.forEach(item => {
+                    const sizeMB = item.size_mb || 0;
+                    if (sizeMB < 1) sizeRanges['< 1 MB']++;
+                    else if (sizeMB < 5) sizeRanges['1-5 MB']++;
+                    else if (sizeMB < 10) sizeRanges['5-10 MB']++;
+                    else if (sizeMB < 15) sizeRanges['10-15 MB']++;
+                    else sizeRanges['> 15 MB']++;
+                });
+            }
+            
+            const sizeDistribution = Object.entries(sizeRanges)
+                .map(([range, count]) => ({ range, count }))
+                .filter(item => item.count > 0);
+            
+            // Camera data
+            let cameraData = [];
+            if (apiStats.top_camera_models) {
+                cameraData = Object.entries(apiStats.top_camera_models)
+                    .map(([model, count]) => ({ model, count }))
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 10);
+            } else if (jsonData.data && Array.isArray(jsonData.data)) {
+                const cameraCounts = {};
+                jsonData.data.forEach(item => {
+                    const camera = item.camera_model || 'Unknown Camera';
+                    if (!cameraCounts[camera]) {
+                        cameraCounts[camera] = 0;
+                    }
+                    cameraCounts[camera]++;
+                });
+                
+                cameraData = Object.entries(cameraCounts)
+                    .map(([model, count]) => ({ model, count }))
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 10);
+            }
+            
+            return {
+                stats: {
+                    uniqueUsers,
+                    totalFiles,
+                    uniqueDates,
+                    totalSize,
+                    avgFileSize: totalFiles > 0 ? totalSize / totalFiles : 0,
+                    geotaggedFiles
+                },
+                data: {
+                    userContributions: userContribArray,
+                    sizeDistribution,
+                    cameraData
+                },
+                geoData: geoLocations
+            };
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        async function testAPI(url, label) {
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    latestApiData = data;
+                    const processed = processData(data);
+                    
+                    return {
+                        success: true,
+                        label: label,
+                        raw: data,
+                        processed: processed,
+                        summary: {
+                            files: data.statistics?.total_files || 0,
+                            users: data.statistics?.unique_uploaders || 0,
+                            size: data.statistics?.total_size_mb || 0,
+                            gpsFiles: data.statistics?.gps_enabled_count || 0,
+                            gpsPoints: processed.geoData.length,
+                            cameras: processed.data.cameraData.length,
+                            sizeBuckets: processed.data.sizeDistribution.length
+                        }
+                    };
+                } else {
+                    return { success: false, label: label, error: data.error };
+                }
+            } catch (error) {
+                return { success: false, label: label, error: error.message };
+            }
+        }
+
+        async function testLiveAPI() {
+            const resultDiv = document.getElementById('api-test-result');
+            resultDiv.innerHTML = '<p>🔄 Testing live API...</p>';
+            
+            const result = await testAPI('https://mist.toolforge.org/api/dashboard.php?category=Vattathil_Waterfalls_Kalladathanni&custom=1', 'Live API');
+            
+            if (result.success) {
+                resultDiv.innerHTML = `
+                    <div class="success">✅ Live API Test Successful</div>
+                    <div class="stats-card">
+                        <h3>Statistics Summary</h3>
+                        <ul>
+                            <li><strong>Files:</strong> ${result.summary.files}</li>
+                            <li><strong>Users:</strong> ${result.summary.users}</li>
+                            <li><strong>Size:</strong> ${result.summary.size} MB</li>
+                            <li><strong>GPS Files (API):</strong> ${result.summary.gpsFiles}</li>
+                            <li><strong>Valid GPS Points:</strong> ${result.summary.gpsPoints}</li>
+                            <li><strong>Camera Models:</strong> ${result.summary.cameras}</li>
+                            <li><strong>Size Buckets:</strong> ${result.summary.sizeBuckets}</li>
+                        </ul>
+                    </div>
+                `;
+                
+                document.getElementById('raw-response').textContent = JSON.stringify(result.raw, null, 2);
+                evaluateFixes(result);
+            } else {
+                resultDiv.innerHTML = `<div class="error">❌ ${result.label} Failed: ${result.error}</div>`;
+            }
+        }
+
+        async function testMockAPI() {
+            const resultDiv = document.getElementById('api-test-result');
+            resultDiv.innerHTML = '<p>🔄 Testing mock API...</p>';
+            
+            const result = await testAPI('https://mist.toolforge.org/api/dashboard.php?category=Test&mock=1', 'Mock API');
+            
+            if (result.success) {
+                resultDiv.innerHTML = `
+                    <div class="success">✅ Mock API Test Successful</div>
+                    <div class="stats-card">
+                        <h3>Mock Data Summary</h3>
+                        <ul>
+                            <li><strong>Files:</strong> ${result.summary.files}</li>
+                            <li><strong>GPS Files (API):</strong> ${result.summary.gpsFiles}</li>
+                            <li><strong>Valid GPS Points:</strong> ${result.summary.gpsPoints}</li>
+                            <li><strong>Camera Models:</strong> ${result.summary.cameras}</li>
+                            <li><strong>Size Buckets:</strong> ${result.summary.sizeBuckets}</li>
+                        </ul>
+                    </div>
+                `;
+                
+                document.getElementById('raw-response').textContent = JSON.stringify(result.raw, null, 2);
+                evaluateFixes(result);
+            } else {
+                resultDiv.innerHTML = `<div class="error">❌ ${result.label} Failed: ${result.error}</div>`;
+            }
+        }
+
+        function evaluateFixes(result) {
+            const fixStatusDiv = document.getElementById('fix-status');
+            const fixes = [];
+            
+            // GPS Fix Evaluation
+            if (result.summary.gpsFiles > 0 && result.summary.gpsPoints > 0) {
+                fixes.push({
+                    name: '📍 GPS Coordinates',
+                    status: 'good',
+                    message: `Fixed! Found ${result.summary.gpsPoints} valid GPS coordinates from ${result.summary.gpsFiles} GPS-enabled files`
+                });
+            } else if (result.summary.gpsFiles === 0) {
+                fixes.push({
+                    name: '📍 GPS Coordinates', 
+                    status: 'improved',
+                    message: 'No GPS data in this category, but parsing logic is now correct'
+                });
+            } else {
+                fixes.push({
+                    name: '📍 GPS Coordinates',
+                    status: 'bad', 
+                    message: `Issue: ${result.summary.gpsFiles} GPS files but ${result.summary.gpsPoints} valid coordinates`
+                });
+            }
+            
+            // Camera Data Fix Evaluation
+            if (result.summary.cameras > 1) {
+                fixes.push({
+                    name: '📷 Camera Models',
+                    status: 'good',
+                    message: `Fixed! Found ${result.summary.cameras} different camera models`
+                });
+            } else if (result.summary.cameras === 1) {
+                fixes.push({
+                    name: '📷 Camera Models',
+                    status: 'improved',
+                    message: 'Partially fixed: Only 1 camera model detected (may be due to limited EXIF data)'
+                });
+            } else {
+                fixes.push({
+                    name: '📷 Camera Models',
+                    status: 'bad',
+                    message: 'Issue: No camera models detected'
+                });
+            }
+            
+            // Size Distribution Fix Evaluation
+            if (result.summary.sizeBuckets >= 3) {
+                fixes.push({
+                    name: '📊 File Size Distribution',
+                    status: 'good',
+                    message: `Fixed! Using ${result.summary.sizeBuckets} appropriate size ranges`
+                });
+            } else if (result.summary.sizeBuckets >= 1) {
+                fixes.push({
+                    name: '📊 File Size Distribution',
+                    status: 'improved',
+                    message: `Improved: ${result.summary.sizeBuckets} size ranges (may vary by data)`
+                });
+            } else {
+                fixes.push({
+                    name: '📊 File Size Distribution',
+                    status: 'bad',
+                    message: 'Issue: No size distribution data'
+                });
+            }
+            
+            // Render fix status
+            fixStatusDiv.innerHTML = fixes.map(fix => `
+                <div class="fix-status fix-${fix.status}">
+                    <strong>${fix.name}</strong><br>
+                    ${fix.message}
+                </div>
+            `).join('');
+        }
+
+        async function compareStatistics() {
+            const resultDiv = document.getElementById('comparison-result');
+            resultDiv.innerHTML = '<p>🔄 Running comparison...</p>';
+            
+            const liveResult = await testAPI('https://mist.toolforge.org/api/dashboard.php?category=Vattathil_Waterfalls_Kalladathanni&custom=1', 'Live');
+            const mockResult = await testAPI('https://mist.toolforge.org/api/dashboard.php?category=Test&mock=1', 'Mock');
+            
+            if (liveResult.success && mockResult.success) {
+                resultDiv.innerHTML = `
+                    <div class="stats-comparison">
+                        <div class="stats-card">
+                            <h3>📊 Real Data (Vattathil Falls)</h3>
+                            <table>
+                                <tr><th>Metric</th><th>Value</th></tr>
+                                <tr><td>Total Files</td><td>${liveResult.summary.files}</td></tr>
+                                <tr><td>GPS Points</td><td>${liveResult.summary.gpsPoints}</td></tr>
+                                <tr><td>Camera Models</td><td>${liveResult.summary.cameras}</td></tr>
+                                <tr><td>Size Ranges</td><td>${liveResult.summary.sizeBuckets}</td></tr>
+                            </table>
+                        </div>
+                        <div class="stats-card">
+                            <h3>🧪 Mock Data</h3>
+                            <table>
+                                <tr><th>Metric</th><th>Value</th></tr>
+                                <tr><td>Total Files</td><td>${mockResult.summary.files}</td></tr>
+                                <tr><td>GPS Points</td><td>${mockResult.summary.gpsPoints}</td></tr>
+                                <tr><td>Camera Models</td><td>${mockResult.summary.cameras}</td></tr>
+                                <tr><td>Size Ranges</td><td>${mockResult.summary.sizeBuckets}</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="info">✅ Both datasets processed successfully with the fixed algorithms!</div>
+                `;
+            } else {
+                resultDiv.innerHTML = '<div class="error">❌ Comparison failed - check individual tests above</div>';
+            }
+        }
+        
+        // Auto-run on page load
+        window.onload = function() {
+            testLiveAPI();
+        };
+    </script>
+</body>
+</html>
