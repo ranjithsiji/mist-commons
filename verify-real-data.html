@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Real Data Processing - Mist Commons</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        pre { background: #f5f5f5; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 12px; }
+        .section { margin: 30px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .info { color: #007bff; font-weight: bold; }
+        button { padding: 12px 24px; margin: 10px 0; background: #007cba; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #005a87; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-number { font-size: 24px; font-weight: bold; color: #007cba; }
+        .stat-label { font-size: 14px; color: #666; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .highlight { background-color: #fff3cd; padding: 10px; border-radius: 4px; border-left: 4px solid #ffc107; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Verify Real Data Processing</h1>
+        <p>This page tests your <strong>mist-commons</strong> frontend with real data from Wikimedia Commons.</p>
+        
+        <div class="highlight">
+            <strong>✅ Your API is working!</strong> The real data from Vattathil Waterfalls category shows 41 files totaling 386.57 MB from 2 contributors (SijiR: 39 files, Manojk: 2 files).
+        </div>
+        
+        <div class="section">
+            <h2>1. Live API Test</h2>
+            <button onclick="testLiveAPI()">Test Live API Data</button>
+            <div id="live-api-result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>2. Data Processing Verification</h2>
+            <button onclick="processRealData()">Process Real Data</button>
+            <div id="processing-result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>3. Expected Dashboard Display</h2>
+            <div id="dashboard-preview"></div>
+        </div>
+
+        <div class="section">
+            <h2>4. Raw API Response</h2>
+            <details>
+                <summary>Click to view full API response</summary>
+                <pre id="raw-data"></pre>
+            </details>
+        </div>
+    </div>
+
+    <script>
+        // Your actual API response
+        const realApiData = {
+            "success": true,
+            "data": [
+                {
+                    "id": 177217223,
+                    "category": "Vattathil_Waterfalls_Kalladathanni",
+                    "filename": "Ithikkara_River_IMG20250413160958.jpg",
+                    "page_title": "Ithikkara_River_IMG20250413160958.jpg",
+                    "upload_date": "2025-10-22",
+                    "imgdate": "20251022",
+                    "timestamp": "20251022151759",
+                    "size_bytes": 8426871,
+                    "size_mb": 8.04,
+                    "dimensions": {"width": 4000, "height": 2256},
+                    "media_type": "BITMAP",
+                    "mime_type": "image/jpeg",
+                    "uploader": "SijiR",
+                    "has_gps": false,
+                    "metadata_available": true
+                },
+                {
+                    "id": 177150398,
+                    "category": "Vattathil_Waterfalls_Kalladathanni",
+                    "filename": "Way_to_Vattathil_Waterfall_Kalladathanni_DSC_5515.jpg",
+                    "page_title": "Way_to_Vattathil_Waterfall_Kalladathanni_DSC_5515.jpg",
+                    "upload_date": "2025-10-21",
+                    "imgdate": "20251021",
+                    "timestamp": "20251021151636",
+                    "size_bytes": 15110862,
+                    "size_mb": 14.41,
+                    "dimensions": {"width": 6000, "height": 4000},
+                    "media_type": "BITMAP",
+                    "mime_type": "image/jpeg",
+                    "uploader": "SijiR",
+                    "has_gps": false,
+                    "metadata_available": true
+                },
+                {
+                    "id": 177192590,
+                    "category": "Vattathil_Waterfalls_Kalladathanni",
+                    "filename": "Vattathil_Waterfalls_Kalladathanni_IMG20250413163627.jpg",
+                    "page_title": "Vattathil_Waterfalls_Kalladathanni_IMG20250413163627.jpg",
+                    "upload_date": "2025-10-22",
+                    "imgdate": "20251022",
+                    "timestamp": "20251022040751",
+                    "size_bytes": 5565548,
+                    "size_mb": 5.31,
+                    "dimensions": {"width": 4608, "height": 2592},
+                    "media_type": "BITMAP",
+                    "mime_type": "image/jpeg",
+                    "uploader": "Manojk",
+                    "has_gps": false,
+                    "metadata_available": true
+                }
+            ],
+            "statistics": {
+                "total_files": 41,
+                "total_size_bytes": 405350583,
+                "total_size_mb": 386.57,
+                "uploaders": {
+                    "SijiR": 39,
+                    "Manojk": 2
+                },
+                "file_types": {
+                    "image/jpeg": 41
+                },
+                "upload_timeline": {
+                    "2025-10": 41
+                },
+                "gps_enabled_count": 0,
+                "unique_uploaders": 2,
+                "gps_percentage": 0,
+                "top_uploaders": {
+                    "SijiR": 39,
+                    "Manojk": 2
+                }
+            },
+            "meta": {
+                "category": "Vattathil_Waterfalls_Kalladathanni",
+                "query_time_ms": 19.09,
+                "total_records": 41,
+                "timestamp": "2025-11-04 17:23:31",
+                "database": "commonswiki.analytics.db.svc.wikimedia.cloud",
+                "cached": false
+            }
+        };
+
+        // Your updated data processing function
+        function processData(jsonData) {
+            console.log('Processing API data:', jsonData);
+            
+            let apiStats = jsonData.statistics || {};
+            
+            // Basic statistics - use API stats
+            const uniqueUsers = apiStats.unique_uploaders || 0;
+            const totalFiles = apiStats.total_files || 0;
+            const totalSize = apiStats.total_size_bytes || 0;
+            const geotaggedFiles = apiStats.gps_enabled_count || 0;
+            const uniqueDates = new Set(jsonData.data?.map(item => item.upload_date) || []).size;
+            
+            // User contributions with actual sizes
+            const userSizes = {};
+            if (jsonData.data) {
+                jsonData.data.forEach(item => {
+                    const user = item.uploader;
+                    if (!userSizes[user]) {
+                        userSizes[user] = 0;
+                    }
+                    userSizes[user] += item.size_bytes || 0;
+                });
+            }
+            
+            const userContributions = Object.entries(apiStats.top_uploaders || {})
+                .map(([name, count]) => ({
+                    name,
+                    files: count,
+                    sizeMB: ((userSizes[name] || 0) / (1024 * 1024)).toFixed(2)
+                }))
+                .sort((a, b) => b.files - a.files);
+            
+            // Daily uploads
+            const dailyUploads = {};
+            if (jsonData.data) {
+                jsonData.data.forEach(item => {
+                    const date = item.upload_date;
+                    if (date) {
+                        dailyUploads[date] = (dailyUploads[date] || 0) + 1;
+                    }
+                });
+            }
+            const dailyUploadArray = Object.entries(dailyUploads)
+                .map(([date, count]) => ({ date, uploads: count }))
+                .sort((a, b) => a.date.localeCompare(b.date));
+            
+            // File size distribution
+            const sizeRanges = {
+                '0-5 MB': 0,
+                '5-10 MB': 0,
+                '10-15 MB': 0,
+                '15+ MB': 0
+            };
+            
+            if (jsonData.data) {
+                jsonData.data.forEach(item => {
+                    const sizeMB = item.size_mb || 0;
+                    if (sizeMB < 5) sizeRanges['0-5 MB']++;
+                    else if (sizeMB < 10) sizeRanges['5-10 MB']++;
+                    else if (sizeMB < 15) sizeRanges['10-15 MB']++;
+                    else sizeRanges['15+ MB']++;
+                });
+            }
+            
+            const sizeDistribution = Object.entries(sizeRanges)
+                .map(([range, count]) => ({ range, count }))
+                .filter(item => item.count > 0);
+            
+            return {
+                stats: {
+                    uniqueUsers,
+                    totalFiles,
+                    uniqueDates,
+                    totalSize,
+                    avgFileSize: totalFiles > 0 ? totalSize / totalFiles : 0,
+                    geotaggedFiles
+                },
+                data: {
+                    userContributions,
+                    dailyUploads: dailyUploadArray,
+                    sizeDistribution
+                },
+                geoData: []
+            };
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        async function testLiveAPI() {
+            const resultDiv = document.getElementById('live-api-result');
+            resultDiv.innerHTML = '<p>🔄 Testing live API...</p>';
+            
+            try {
+                const response = await fetch('https://mist.toolforge.org/api/dashboard.php?category=Vattathil_Waterfalls_Kalladathanni&custom=1');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Live API Success!</p>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number">${data.statistics?.total_files || 0}</div>
+                                <div class="stat-label">Total Files</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${data.statistics?.unique_uploaders || 0}</div>
+                                <div class="stat-label">Contributors</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${data.statistics?.total_size_mb || 0} MB</div>
+                                <div class="stat-label">Total Size</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">${data.meta?.query_time_ms || 0}ms</div>
+                                <div class="stat-label">Query Time</div>
+                            </div>
+                        </div>
+                        <p><strong>Database:</strong> ${data.meta?.database || 'Unknown'}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ API Error: ${data.error}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Network Error: ${error.message}</p>`;
+            }
+        }
+
+        function processRealData() {
+            const resultDiv = document.getElementById('processing-result');
+            
+            try {
+                const processed = processData(realApiData);
+                
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Data Processing Success!</p>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">${processed.stats.uniqueUsers}</div>
+                            <div class="stat-label">Contributors</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${processed.stats.totalFiles}</div>
+                            <div class="stat-label">Total Files</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${processed.stats.uniqueDates}</div>
+                            <div class="stat-label">Upload Days</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${formatBytes(processed.stats.totalSize)}</div>
+                            <div class="stat-label">Total Size</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${formatBytes(processed.stats.avgFileSize)}</div>
+                            <div class="stat-label">Avg File Size</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${processed.stats.geotaggedFiles}</div>
+                            <div class="stat-label">Geotagged</div>
+                        </div>
+                    </div>
+                    
+                    <h3>👥 Top Contributors</h3>
+                    <table>
+                        <tr><th>User</th><th>Files</th><th>Size (MB)</th></tr>
+                        ${processed.data.userContributions.map(user => 
+                            `<tr><td>${user.name}</td><td>${user.files}</td><td>${user.sizeMB}</td></tr>`
+                        ).join('')}
+                    </table>
+                    
+                    <h3>📊 File Size Distribution</h3>
+                    <table>
+                        <tr><th>Size Range</th><th>Count</th></tr>
+                        ${processed.data.sizeDistribution.map(item => 
+                            `<tr><td>${item.range}</td><td>${item.count}</td></tr>`
+                        ).join('')}
+                    </table>
+                    
+                    <h3>📅 Upload Timeline</h3>
+                    <table>
+                        <tr><th>Date</th><th>Uploads</th></tr>
+                        ${processed.data.dailyUploads.map(day => 
+                            `<tr><td>${day.date}</td><td>${day.uploads}</td></tr>`
+                        ).join('')}
+                    </table>
+                `;
+                
+                // Show dashboard preview
+                showDashboardPreview(processed);
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Processing Error: ${error.message}</p>`;
+            }
+        }
+        
+        function showDashboardPreview(processed) {
+            const previewDiv = document.getElementById('dashboard-preview');
+            
+            previewDiv.innerHTML = `
+                <div class="info">This is how your Vue.js dashboard should display the data:</div>
+                
+                <h3>📊 Stats Cards Component</h3>
+                <div class="stats-grid">
+                    <div class="stat-card" style="border-left: 4px solid #3B82F6;">
+                        <div class="stat-number">${processed.stats.uniqueUsers}</div>
+                        <div class="stat-label">Contributors</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #10B981;">
+                        <div class="stat-number">${processed.stats.totalFiles}</div>
+                        <div class="stat-label">Total Files</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #8B5CF6;">
+                        <div class="stat-number">${processed.stats.uniqueDates}</div>
+                        <div class="stat-label">Active Days</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #F59E0B;">
+                        <div class="stat-number">${formatBytes(processed.stats.totalSize)}</div>
+                        <div class="stat-label">Total Size</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #EF4444;">
+                        <div class="stat-number">${formatBytes(processed.stats.avgFileSize)}</div>
+                        <div class="stat-label">Avg File Size</div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #06B6D4;">
+                        <div class="stat-number">${processed.stats.geotaggedFiles}</div>
+                        <div class="stat-label">Geotagged</div>
+                    </div>
+                </div>
+                
+                <h3>📈 Charts Component</h3>
+                <p>✅ Daily uploads chart: ${processed.data.dailyUploads.length} data points</p>
+                <p>✅ Size distribution chart: ${processed.data.sizeDistribution.length} categories</p>
+                
+                <h3>👥 Contributors Table Component</h3>
+                <p>✅ User contributions: ${processed.data.userContributions.length} users</p>
+                
+                <h3>🗺️ Photo Map Component</h3>
+                <p>ℹ️ No GPS data available for this category (${processed.stats.geotaggedFiles} geotagged files)</p>
+            `;
+        }
+
+        // Initialize page
+        document.getElementById('raw-data').textContent = JSON.stringify(realApiData, null, 2);
+        
+        // Auto-process real data on load
+        window.onload = function() {
+            processRealData();
+        };
+    </script>
+</body>
+</html>
