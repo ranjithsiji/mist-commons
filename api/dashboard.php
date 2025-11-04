@@ -2,8 +2,11 @@
 /**
  * Wikimedia Commons Dashboard API
  * 
- * This API queries the Wikimedia database and returns data in JSON format
- * for the Vue.js dashboard to consume.
+ * This API queries the Wikimedia Commons replica database using the Database class
+ * and returns category statistics in JSON format for the Vue.js dashboard.
+ * 
+ * @author Ranjith Siji
+ * @version 2.0
  */
 
 // Set headers first
@@ -30,8 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit();
 }
 
-// Load configuration
-require_once __DIR__ . '/config.php';
+// Load database class
+require_once __DIR__ . '/database.php';
 
 // Cache configuration
 $cacheDir = __DIR__ . '/../cache';
@@ -70,29 +73,34 @@ function saveCacheData($cacheFile, $data) {
 }
 
 /**
- * Query the database
+ * Query the Wikimedia Commons database using the Database class
  */
-function queryDatabase($dbConfig, $category) {
+function queryCommonsDatabase($category) {
     try {
-        $dsn = "mysql:host={$dbConfig['host']};dbname={$dbConfig['dbname']};charset={$dbConfig['charset']}";
-        $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_TIMEOUT => 30
-        ]);
-
-        // SQL Query with parameterized category
-        // This query retrieves image data from the categorylinks and image tables
+        $startTime = microtime(true);
+        $db = Database::getInstance();
+        
+        // SQL Query to get category statistics
+        // This query retrieves comprehensive image data from categorylinks, page, and image tables
         $sql = "
             SELECT 
                 cl.cl_from,
                 cl.cl_to,
-                img.img_name as File,
+                img.img_name as filename,
+                DATE_FORMAT(img.img_timestamp, '%Y-%m-%d') as upload_date,
                 DATE_FORMAT(img.img_timestamp, '%Y%m%d') as imgdate,
                 img.img_timestamp,
                 img.img_size,
+                img.img_width,
+                img.img_height,
+                img.img_bits,
+                img.img_media_type,
+                img.img_major_mime,
+                img.img_minor_mime,
                 COALESCE(img.img_metadata, '{}') as img_metadata,
-                COALESCE(actor.actor_name, 'Unknown') as actor_name
+                COALESCE(actor.actor_name, 'Unknown') as uploader,
+                page.page_title,
+                page.page_len
             FROM 
                 categorylinks cl
             INNER JOIN 
@@ -102,54 +110,140 @@ function queryDatabase($dbConfig, $category) {
             LEFT JOIN
                 actor ON img.img_actor = actor.actor_id
             WHERE 
-                cl.cl_to = :category
+                cl.cl_to = ?
                 AND page.page_namespace = 6
             ORDER BY 
                 img.img_timestamp DESC
             LIMIT 10000
         ";
 
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(['category' => $category]);
-        $results = $stmt->fetchAll();
-
-        // Format the data to match the expected structure
-        $rows = [];
+        $results = $db->executeQuery($sql, [$category]);
+        
+        // Process and enhance the results
+        $processedRows = [];
+        $statistics = [
+            'total_files' => 0,
+            'total_size_bytes' => 0,
+            'total_size_mb' => 0,
+            'uploaders' => [],
+            'file_types' => [],
+            'upload_timeline' => [],
+            'gps_enabled_count' => 0
+        ];
+        
         foreach ($results as $row) {
-            $rows[] = [
-                (int)$row['cl_from'],
-                $row['cl_to'],
-                $row['File'],
-                $row['imgdate'],
-                $row['img_timestamp'],
-                (int)$row['img_size'],
-                $row['img_metadata'],
-                $row['actor_name']
+            // Parse metadata for additional insights
+            $metadata = [];
+            $hasGPS = false;
+            
+            if (!empty($row['img_metadata']) && $row['img_metadata'] !== '{}') {
+                $decodedMetadata = json_decode($row['img_metadata'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decodedMetadata)) {
+                    $metadata = $decodedMetadata;
+                    
+                    // Check for GPS coordinates
+                    if (isset($metadata['GPSLatitude']) || isset($metadata['GPSLongitude']) ||
+                        (isset($metadata['data']) && (isset($metadata['data']['GPSLatitude']) || isset($metadata['data']['GPSLongitude'])))) {
+                        $hasGPS = true;
+                        $statistics['gps_enabled_count']++;
+                    }
+                }
+            }
+            
+            // Collect statistics
+            $statistics['total_files']++;
+            $statistics['total_size_bytes'] += (int)$row['img_size'];
+            
+            // Track uploaders
+            $uploader = $row['uploader'];
+            if (!isset($statistics['uploaders'][$uploader])) {
+                $statistics['uploaders'][$uploader] = 0;
+            }
+            $statistics['uploaders'][$uploader]++;
+            
+            // Track file types
+            $mimeType = $row['img_major_mime'] . '/' . $row['img_minor_mime'];
+            if (!isset($statistics['file_types'][$mimeType])) {
+                $statistics['file_types'][$mimeType] = 0;
+            }
+            $statistics['file_types'][$mimeType]++;
+            
+            // Track upload timeline (by month)
+            $uploadMonth = date('Y-m', strtotime($row['img_timestamp']));
+            if (!isset($statistics['upload_timeline'][$uploadMonth])) {
+                $statistics['upload_timeline'][$uploadMonth] = 0;
+            }
+            $statistics['upload_timeline'][$uploadMonth]++;
+            
+            // Format row data
+            $processedRows[] = [
+                'id' => (int)$row['cl_from'],
+                'category' => $row['cl_to'],
+                'filename' => $row['filename'],
+                'page_title' => $row['page_title'],
+                'upload_date' => $row['upload_date'],
+                'imgdate' => $row['imgdate'],
+                'timestamp' => $row['img_timestamp'],
+                'size_bytes' => (int)$row['img_size'],
+                'size_mb' => round((int)$row['img_size'] / 1024 / 1024, 2),
+                'dimensions' => [
+                    'width' => (int)$row['img_width'],
+                    'height' => (int)$row['img_height']
+                ],
+                'media_type' => $row['img_media_type'],
+                'mime_type' => $mimeType,
+                'uploader' => $uploader,
+                'has_gps' => $hasGPS,
+                'metadata_available' => !empty($metadata)
             ];
         }
-
+        
+        // Calculate final statistics
+        $statistics['total_size_mb'] = round($statistics['total_size_bytes'] / 1024 / 1024, 2);
+        $statistics['unique_uploaders'] = count($statistics['uploaders']);
+        $statistics['gps_percentage'] = $statistics['total_files'] > 0 ? 
+            round(($statistics['gps_enabled_count'] / $statistics['total_files']) * 100, 2) : 0;
+        
+        // Sort uploaders by contribution count
+        arsort($statistics['uploaders']);
+        $statistics['top_uploaders'] = array_slice($statistics['uploaders'], 0, 10, true);
+        
+        // Sort file types
+        arsort($statistics['file_types']);
+        
+        // Sort timeline
+        ksort($statistics['upload_timeline']);
+        
+        $executionTime = round((microtime(true) - $startTime) * 1000, 2);
+        
         return [
             'success' => true,
-            'rows' => $rows,
-            'count' => count($rows),
-            'timestamp' => date('Y-m-d H:i:s'),
-            'query_time' => $stmt->rowCount(),
-            'category' => $category
+            'data' => $processedRows,
+            'statistics' => $statistics,
+            'meta' => [
+                'category' => $category,
+                'query_time_ms' => $executionTime,
+                'total_records' => count($processedRows),
+                'timestamp' => date('Y-m-d H:i:s'),
+                'database' => 'commonswiki.analytics.db.svc.wikimedia.cloud'
+            ]
         ];
 
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
+        error_log('Database query failed for category ' . $category . ': ' . $e->getMessage());
         return [
             'success' => false,
-            'error' => 'Database error: ' . $e->getMessage(),
-            'category' => $category
+            'error' => 'Database query failed: ' . $e->getMessage(),
+            'category' => $category,
+            'timestamp' => date('Y-m-d H:i:s')
         ];
     }
 }
 
 /**
- * Load sample data from JSON file
+ * Load sample data from JSON file for development/testing
  */
-function loadSampleData($category='sample') {
+function loadSampleData($category = 'sample') {
     $sampleFile = __DIR__ . '/sample-data.json';
     
     if (!file_exists($sampleFile)) {
@@ -172,7 +266,7 @@ function loadSampleData($category='sample') {
             ];
         }
         
-        // Validate structure
+        // Validate structure and transform to new format
         if (!isset($sampleData['rows']) || !is_array($sampleData['rows'])) {
             return [
                 'success' => false,
@@ -181,15 +275,66 @@ function loadSampleData($category='sample') {
             ];
         }
         
+        // Transform old format to new format
+        $transformedData = [];
+        $statistics = [
+            'total_files' => count($sampleData['rows']),
+            'total_size_bytes' => 0,
+            'total_size_mb' => 0,
+            'uploaders' => [],
+            'file_types' => [],
+            'upload_timeline' => [],
+            'gps_enabled_count' => 0
+        ];
+        
+        foreach ($sampleData['rows'] as $index => $row) {
+            if (is_array($row) && count($row) >= 8) {
+                $sizeBytes = (int)($row[5] ?? 0);
+                $statistics['total_size_bytes'] += $sizeBytes;
+                
+                $uploader = $row[7] ?? 'Unknown';
+                if (!isset($statistics['uploaders'][$uploader])) {
+                    $statistics['uploaders'][$uploader] = 0;
+                }
+                $statistics['uploaders'][$uploader]++;
+                
+                $transformedData[] = [
+                    'id' => (int)($row[0] ?? $index),
+                    'category' => $row[1] ?? $category,
+                    'filename' => $row[2] ?? 'unknown.jpg',
+                    'page_title' => $row[2] ?? 'unknown.jpg',
+                    'upload_date' => isset($row[4]) ? date('Y-m-d', strtotime($row[4])) : date('Y-m-d'),
+                    'imgdate' => $row[3] ?? date('Ymd'),
+                    'timestamp' => $row[4] ?? date('YmdHis'),
+                    'size_bytes' => $sizeBytes,
+                    'size_mb' => round($sizeBytes / 1024 / 1024, 2),
+                    'dimensions' => ['width' => 0, 'height' => 0],
+                    'media_type' => 'BITMAP',
+                    'mime_type' => 'image/jpeg',
+                    'uploader' => $uploader,
+                    'has_gps' => false,
+                    'metadata_available' => !empty($row[6] ?? '')
+                ];
+            }
+        }
+        
+        $statistics['total_size_mb'] = round($statistics['total_size_bytes'] / 1024 / 1024, 2);
+        $statistics['unique_uploaders'] = count($statistics['uploaders']);
+        arsort($statistics['uploaders']);
+        $statistics['top_uploaders'] = array_slice($statistics['uploaders'], 0, 10, true);
+        
         return [
             'success' => true,
-            'meta' => $sampleData['meta'] ?? null,
-            'headers' => $sampleData['headers'] ?? ['cl_from', 'cl_to', 'File', 'imgdate', 'img_timestamp', 'img_size', 'img_metadata', 'actor_name'],
-            'rows' => $sampleData['rows'],
-            'count' => count($sampleData['rows']),
-            'timestamp' => date('Y-m-d H:i:s'),
-            'category' => $category,
-            'sample_data' => true
+            'data' => $transformedData,
+            'statistics' => $statistics,
+            'meta' => [
+                'category' => $category,
+                'query_time_ms' => 0,
+                'total_records' => count($transformedData),
+                'timestamp' => date('Y-m-d H:i:s'),
+                'database' => 'sample_data',
+                'sample_data' => true
+            ]
         ];
         
     } catch (Exception $e) {
@@ -205,46 +350,94 @@ function loadSampleData($category='sample') {
  * Generate mock data for development/testing
  */
 function generateMockData($category) {
-    $mockRows = [];
-    $cameras = ['Canon EOS 5D Mark IV', 'Nikon D850', 'Sony Alpha 7R IV', 'Fujifilm X-T4'];
-    $users = ['NaturePhotographer123', 'BirdWatcher_India', 'WildlifeExplorer', 'PhotographyLover'];
+    $cameras = ['Canon EOS 5D Mark IV', 'Nikon D850', 'Sony Alpha 7R IV', 'Fujifilm X-T4', 'Olympus OM-D E-M1'];
+    $users = ['NaturePhotographer123', 'BirdWatcher_India', 'WildlifeExplorer', 'PhotographyLover', 'IndiaHeritage'];
+    $fileTypes = ['image/jpeg', 'image/png', 'image/tiff'];
+    
+    $mockData = [];
+    $statistics = [
+        'total_files' => 50,
+        'total_size_bytes' => 0,
+        'uploaders' => [],
+        'file_types' => [],
+        'upload_timeline' => [],
+        'gps_enabled_count' => 0
+    ];
     
     for ($i = 1; $i <= 50; $i++) {
-        $date = date('Ymd', strtotime("-{$i} days"));
-        $timestamp = date('YmdHis', strtotime("-{$i} days"));
-        $size = rand(500000, 5000000);
-        
+        $daysAgo = rand(1, 365);
+        $timestamp = date('YmdHis', strtotime("-{$daysAgo} days"));
+        $uploadDate = date('Y-m-d', strtotime("-{$daysAgo} days"));
+        $uploadMonth = date('Y-m', strtotime("-{$daysAgo} days"));
+        $sizeBytes = rand(500000, 5000000);
+        $uploader = $users[array_rand($users)];
+        $mimeType = $fileTypes[array_rand($fileTypes)];
         $hasGPS = rand(1, 3) === 1; // 33% chance of GPS data
-        $metadata = [
-            'data' => [
-                'Model' => $cameras[array_rand($cameras)]
-            ]
-        ];
+        
+        // Update statistics
+        $statistics['total_size_bytes'] += $sizeBytes;
+        if (!isset($statistics['uploaders'][$uploader])) {
+            $statistics['uploaders'][$uploader] = 0;
+        }
+        $statistics['uploaders'][$uploader]++;
+        
+        if (!isset($statistics['file_types'][$mimeType])) {
+            $statistics['file_types'][$mimeType] = 0;
+        }
+        $statistics['file_types'][$mimeType]++;
+        
+        if (!isset($statistics['upload_timeline'][$uploadMonth])) {
+            $statistics['upload_timeline'][$uploadMonth] = 0;
+        }
+        $statistics['upload_timeline'][$uploadMonth]++;
         
         if ($hasGPS) {
-            $metadata['data']['GPSLatitude'] = rand(800, 3500) / 100; // India latitude range
-            $metadata['data']['GPSLongitude'] = rand(6800, 9700) / 100; // India longitude range
+            $statistics['gps_enabled_count']++;
         }
         
-        $mockRows[] = [
-            $i,
-            $category,
-            "Sample_Bird_Photo_{$i}.jpg",
-            $date,
-            $timestamp,
-            $size,
-            json_encode($metadata),
-            $users[array_rand($users)]
+        $mockData[] = [
+            'id' => $i,
+            'category' => $category,
+            'filename' => "Sample_Photo_{$i}.jpg",
+            'page_title' => "Sample_Photo_{$i}.jpg",
+            'upload_date' => $uploadDate,
+            'imgdate' => date('Ymd', strtotime("-{$daysAgo} days")),
+            'timestamp' => $timestamp,
+            'size_bytes' => $sizeBytes,
+            'size_mb' => round($sizeBytes / 1024 / 1024, 2),
+            'dimensions' => [
+                'width' => rand(1920, 6000),
+                'height' => rand(1080, 4000)
+            ],
+            'media_type' => 'BITMAP',
+            'mime_type' => $mimeType,
+            'uploader' => $uploader,
+            'has_gps' => $hasGPS,
+            'metadata_available' => true
         ];
     }
     
+    // Finalize statistics
+    $statistics['total_size_mb'] = round($statistics['total_size_bytes'] / 1024 / 1024, 2);
+    $statistics['unique_uploaders'] = count($statistics['uploaders']);
+    $statistics['gps_percentage'] = round(($statistics['gps_enabled_count'] / 50) * 100, 2);
+    arsort($statistics['uploaders']);
+    $statistics['top_uploaders'] = array_slice($statistics['uploaders'], 0, 10, true);
+    arsort($statistics['file_types']);
+    ksort($statistics['upload_timeline']);
+    
     return [
         'success' => true,
-        'rows' => $mockRows,
-        'count' => count($mockRows),
-        'timestamp' => date('Y-m-d H:i:s'),
-        'category' => $category,
-        'mock_data' => true
+        'data' => $mockData,
+        'statistics' => $statistics,
+        'meta' => [
+            'category' => $category,
+            'query_time_ms' => rand(100, 500),
+            'total_records' => count($mockData),
+            'timestamp' => date('Y-m-d H:i:s'),
+            'database' => 'mock_data',
+            'mock_data' => true
+        ]
     ];
 }
 
@@ -258,17 +451,26 @@ try {
         echo json_encode([
             'success' => false,
             'error' => 'Category parameter is required. Please provide ?category=CategoryName',
-            'timestamp' => date('Y-m-d H:i:s')
+            'timestamp' => date('Y-m-d H:i:s'),
+            'usage' => [
+                'endpoint' => $_SERVER['REQUEST_URI'],
+                'parameters' => [
+                    'category' => 'Required - Category name from Wikimedia Commons',
+                    'refresh' => 'Optional - Set to "1" to bypass cache',
+                    'mock' => 'Optional - Set to "1" to use mock data',
+                    'sample' => 'Optional - Set to "1" to use sample data'
+                ]
+            ]
         ]);
         exit;
     }
     
-    // Validate category name (basic security)
-    if (!preg_match('/^[a-zA-Z0-9_\-()\s]+$/', $category)) {
+    // Validate category name (enhanced security)
+    if (!preg_match('/^[a-zA-Z0-9_\-().\s\/]+$/', $category) || strlen($category) > 255) {
         http_response_code(400);
         echo json_encode([
             'success' => false,
-            'error' => 'Invalid category name. Only alphanumeric characters, spaces, hyphens, underscores and parentheses are allowed.',
+            'error' => 'Invalid category name. Only alphanumeric characters, spaces, hyphens, underscores, periods, forward slashes and parentheses are allowed. Maximum 255 characters.',
             'timestamp' => date('Y-m-d H:i:s')
         ]);
         exit;
@@ -284,9 +486,8 @@ try {
         // Return cached data
         $data = getCachedData($cacheFile);
         if ($data) {
-            $data['cached'] = true;
-            $data['cache_age'] = time() - filemtime($cacheFile);
-            $data['category'] = $category;
+            $data['meta']['cached'] = true;
+            $data['meta']['cache_age_seconds'] = time() - filemtime($cacheFile);
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
             exit;
         }
@@ -297,25 +498,26 @@ try {
     $useSampleData = isset($_GET['sample']) && $_GET['sample'] === '1';
     
     if ($useMockData) {
-        // Generate mock data
+        // Generate mock data for development
         $data = generateMockData($category);
     } elseif ($useSampleData) {
         // Load sample data from JSON file
         $data = loadSampleData($category);
     } else {
-        // Query fresh data from database
-        $data = queryDatabase($dbConfig, $category);
+        // Query fresh data from Wikimedia Commons database
+        $data = queryCommonsDatabase($category);
     }
     
     if ($data['success']) {
-        // Save to cache (only if not mock data or sample data)
-        if (!isset($data['mock_data']) && !isset($data['sample_data'])) {
+        // Save to cache (only if real database data)
+        if (!isset($data['meta']['mock_data']) && !isset($data['meta']['sample_data'])) {
             saveCacheData($cacheFile, $data);
         }
-        $data['cached'] = false;
-        $data['category'] = $category;
+        $data['meta']['cached'] = false;
     }
 
+    // Set appropriate HTTP status code
+    http_response_code($data['success'] ? 200 : 500);
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
@@ -323,10 +525,14 @@ try {
     echo json_encode([
         'success' => false,
         'error' => 'Server error: ' . $e->getMessage(),
-        'timestamp' => date('Y-m-d H:i:s')
+        'timestamp' => date('Y-m-d H:i:s'),
+        'debug' => [
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ]
     ]);
     
     // Log error for debugging
-    error_log('Dashboard API Error: ' . $e->getMessage());
+    error_log('Dashboard API Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
 }
 ?>
