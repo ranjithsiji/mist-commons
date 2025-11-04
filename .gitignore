@@ -138,3 +138,22 @@ out
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Database credentials and sensitive files
+replica.my.cnf
+api/replica.my.cnf
+*.my.cnf
+
+# Cache files
+cache/
+api/cache/
+*.cache
+
+# PHP specific
+vendor/
+composer.lock
+
+# Project specific
+*.bak
+*.backup
+*.tmp
