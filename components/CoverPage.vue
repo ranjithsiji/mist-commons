@@ -120,6 +120,18 @@
                     >
                       {{ suggestion.categoryinfo.pages }} pages
                     </div>
+                    <!-- Commons Link -->
+                    <div 
+                      :class="[
+                        'text-xs mt-1 flex items-center',
+                        selectedSuggestionIndex === index ? 'text-blue-200' : 'text-gray-400'
+                      ]"
+                    >
+                      <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                      </svg>
+                      commons.wikimedia.org/wiki/{{ suggestion.title.replace(' ', '_') }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -138,6 +150,29 @@
                 </svg>
                 {{ searchingCategories ? 'Searching...' : 'View Statistics' }}
               </button>
+            </div>
+            
+            <!-- Current category Commons link -->
+            <div v-if="currentCommonsUrl" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center text-sm text-blue-700">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                  </svg>
+                  <span class="font-medium">Category on Commons:</span>
+                </div>
+                <a 
+                  :href="currentCommonsUrl" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  class="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline transition-colors duration-200"
+                >
+                  View on Commons →
+                </a>
+              </div>
+              <div class="mt-1 text-xs text-blue-600 font-mono break-all">
+                {{ currentCommonsUrl }}
+              </div>
             </div>
             
             <!-- Search help text -->
@@ -269,7 +304,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted, computed, watch } from 'vue';
 
 const props = defineProps({
   categories: {
@@ -301,6 +336,31 @@ const categorySearchError = ref('');
 const categoryInput = ref(null);
 
 let searchTimeout = null;
+
+// Computed property for current Commons URL
+const currentCommonsUrl = computed(() => {
+  if (!customCategoryQuery.value.trim()) return null;
+  
+  let categoryName = customCategoryQuery.value.trim();
+  // Add "Category:" prefix if not present
+  if (!categoryName.toLowerCase().startsWith('category:')) {
+    categoryName = `Category:${categoryName}`;
+  }
+  
+  const encodedName = encodeURIComponent(categoryName.replace(/ /g, '_'));
+  return `https://commons.wikimedia.org/wiki/${encodedName}`;
+});
+
+// Watch for URL changes to populate the input field
+watch(() => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('category');
+}, (categorySlug) => {
+  if (categorySlug && !customCategoryQuery.value) {
+    const decodedSlug = decodeURIComponent(categorySlug);
+    customCategoryQuery.value = decodedSlug.replace(/_/g, ' ');
+  }
+}, { immediate: true });
 
 const handleCategoryInput = () => {
   const query = customCategoryQuery.value.trim();

@@ -96,11 +96,29 @@
           <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
             {{ selectedCategory.categoryName }} Analytics
           </h2>
-          <p class="text-lg text-gray-600 leading-relaxed max-w-4xl">
-            <a href="https://commons.wikimedia.org/wiki/Category:{{ selectedCategory.slug }}" target="_blank" rel="noopener noreferrer" class="text-wikimedia-blue hover:text-wikimedia-green transition-colors duration-200">
-              View Category on Wikimedia Commons
-            </a>
-          </p>
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <p class="text-lg text-gray-600 leading-relaxed">
+              <a :href="getCommonsUrl()" target="_blank" rel="noopener noreferrer" class="text-wikimedia-blue hover:text-wikimedia-green transition-colors duration-200">
+                View Category on Wikimedia Commons
+              </a>
+            </p>
+            
+            <!-- Share URL Section -->
+            <div class="flex items-center space-x-2">
+              <button
+                @click="copyShareUrl"
+                class="inline-flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors duration-200"
+                :class="{ 'bg-green-100 text-green-700': urlCopied }"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path v-if="!urlCopied" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                  <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                {{ urlCopied ? 'Copied!' : 'Share URL' }}
+              </button>
+            </div>
+          </div>
+          
           <!-- Custom category info -->
           <div v-if="selectedCategory.isCustom && categoryValidation" class="mt-4">
             <div 
@@ -214,6 +232,7 @@ const geoData = ref([]);
 const loadingCategories = ref(false);
 const mobileMenuOpen = ref(false);
 const categoryValidation = ref(null);
+const urlCopied = ref(false);
 
 const loadCategories = async () => {
   loadingCategories.value = true;
@@ -260,11 +279,12 @@ const backToHome = () => {
   geoData.value = [];
   categoryValidation.value = null;
   mobileMenuOpen.value = false;
+  urlCopied.value = false;
   updateURL('');
 };
 
 const updateURL = (slug) => {
-  const newURL = slug ? `?category=${slug}` : window.location.pathname;
+  const newURL = slug ? `?category=${encodeURIComponent(slug)}` : window.location.pathname;
   window.history.pushState({}, '', newURL);
 };
 
@@ -272,11 +292,31 @@ const loadFromURL = () => {
   const params = new URLSearchParams(window.location.search);
   const categorySlug = params.get('category');
   
-  if (categorySlug && categories.value.length > 0) {
-    const category = categories.value.find(cat => cat.slug === categorySlug);
-    if (category) {
-      selectCategory(category);
+  if (categorySlug) {
+    const decodedSlug = decodeURIComponent(categorySlug);
+    
+    // First try to find in predefined categories
+    const predefinedCategory = categories.value.find(cat => cat.slug === decodedSlug);
+    if (predefinedCategory) {
+      selectCategory(predefinedCategory);
+      return;
     }
+    
+    // If not found in predefined, treat as custom category
+    const customCategory = {
+      id: `custom-${Date.now()}`,
+      name: decodedSlug.replace(/_/g, ' '),
+      slug: decodedSlug,
+      description: `Custom analysis for ${decodedSlug.replace(/_/g, ' ')}`,
+      categoryName: decodedSlug.replace(/_/g, ' '),
+      icon: '🔍',
+      year: 'Custom',
+      color1: '#8B5CF6',
+      color2: '#7C3AED',
+      isCustom: true
+    };
+    
+    selectCustomCategory(customCategory);
   }
 };
 
@@ -297,6 +337,44 @@ const fetchData = async (categoryName, isCustom = false) => {
 const refreshData = () => {
   if (selectedCategory.value) {
     fetchData(selectedCategory.value.categoryName, selectedCategory.value.isCustom);
+  }
+};
+
+const getCommonsUrl = () => {
+  if (!selectedCategory.value) return '#';
+  const categoryName = selectedCategory.value.categoryName;
+  const encodedName = encodeURIComponent(categoryName.replace(/ /g, '_'));
+  return `https://commons.wikimedia.org/wiki/Category:${encodedName}`;
+};
+
+const copyShareUrl = async () => {
+  if (!selectedCategory.value) return;
+  
+  const currentUrl = window.location.href;
+  
+  try {
+    await navigator.clipboard.writeText(currentUrl);
+    urlCopied.value = true;
+    setTimeout(() => {
+      urlCopied.value = false;
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy URL:', err);
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = currentUrl;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      urlCopied.value = true;
+      setTimeout(() => {
+        urlCopied.value = false;
+      }, 2000);
+    } catch (fallbackErr) {
+      console.error('Fallback copy failed:', fallbackErr);
+    }
+    document.body.removeChild(textArea);
   }
 };
 
