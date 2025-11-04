@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
       open: true,
       proxy: {
         '/api': {
-          target: process.env.VITE_PHP_SERVER_URL || 'http://localhost:8000',
+          target: process.env.VITE_PHP_SERVER_URL || 'https://mist.toolforge.org',
           changeOrigin: true,
           secure: false,
           configure: (proxy, options) => {
