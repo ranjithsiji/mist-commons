@@ -496,7 +496,8 @@ try {
     // Determine data source
     $useMockData = isset($_GET['mock']) && $_GET['mock'] === '1';
    // $useSampleData = isset($_GET['sample']) && $_GET['sample'] === '1';
-   $useSampleData =1 ;
+   //$useSampleData =1 ;
+   $useMockData =1 ;
     
     if ($useMockData) {
         // Generate mock data for development
