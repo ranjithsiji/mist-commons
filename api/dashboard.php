@@ -6,7 +6,7 @@
  * and returns category statistics in JSON format for the Vue.js dashboard.
  * 
  * @author Ranjith Siji
- * @version 2.0
+ * @version 2.1
  */
 
 // Set headers first
@@ -39,6 +39,129 @@ require_once __DIR__ . '/database.php';
 // Cache configuration
 $cacheDir = __DIR__ . '/../cache';
 $cacheTime = 3600; // Cache for 1 hour (3600 seconds)
+
+/**
+ * Parse EXIF metadata from MediaWiki metadata blob
+ */
+function parseExifMetadata($metadataBlob) {
+    $exifData = [
+        'camera_make' => null,
+        'camera_model' => null,
+        'gps_latitude' => null,
+        'gps_longitude' => null,
+        'has_gps' => false
+    ];
+    
+    if (empty($metadataBlob) || $metadataBlob === '{}') {
+        return $exifData;
+    }
+    
+    try {
+        // Try to unserialize PHP serialized data first (MediaWiki format)
+        $metadata = @unserialize($metadataBlob);
+        
+        if ($metadata === false) {
+            // Try JSON decode as fallback
+            $metadata = json_decode($metadataBlob, true);
+        }
+        
+        if (!is_array($metadata)) {
+            return $exifData;
+        }
+        
+        // Extract camera information
+        if (isset($metadata['Make'])) {
+            $exifData['camera_make'] = $metadata['Make'];
+        }
+        if (isset($metadata['Model'])) {
+            $exifData['camera_model'] = $metadata['Model'];
+        }
+        
+        // Extract GPS coordinates
+        if (isset($metadata['GPSLatitude']) && isset($metadata['GPSLongitude'])) {
+            $exifData['gps_latitude'] = parseGPSCoordinate($metadata['GPSLatitude'], $metadata['GPSLatitudeRef'] ?? 'N');
+            $exifData['gps_longitude'] = parseGPSCoordinate($metadata['GPSLongitude'], $metadata['GPSLongitudeRef'] ?? 'E');
+            $exifData['has_gps'] = true;
+        }
+        
+        // Alternative GPS formats
+        if (!$exifData['has_gps']) {
+            $gpsFields = ['GPS', 'gps', 'location'];
+            foreach ($gpsFields as $field) {
+                if (isset($metadata[$field])) {
+                    $gpsData = $metadata[$field];
+                    if (is_array($gpsData)) {
+                        if (isset($gpsData['latitude']) && isset($gpsData['longitude'])) {
+                            $exifData['gps_latitude'] = (float)$gpsData['latitude'];
+                            $exifData['gps_longitude'] = (float)$gpsData['longitude'];
+                            $exifData['has_gps'] = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+    } catch (Exception $e) {
+        error_log('Metadata parsing error: ' . $e->getMessage());
+    }
+    
+    return $exifData;
+}
+
+/**
+ * Parse GPS coordinate from EXIF format
+ */
+function parseGPSCoordinate($coordinate, $ref) {
+    if (!is_array($coordinate) || count($coordinate) < 3) {
+        return null;
+    }
+    
+    $degrees = (float)$coordinate[0];
+    $minutes = (float)$coordinate[1];
+    $seconds = (float)$coordinate[2];
+    
+    $decimal = $degrees + ($minutes / 60) + ($seconds / 3600);
+    
+    // Apply hemisphere
+    if (in_array($ref, ['S', 'W'])) {
+        $decimal = -$decimal;
+    }
+    
+    return $decimal;
+}
+
+/**
+ * Extract camera model from filename patterns if EXIF is not available
+ */
+function guessCameraFromFilename($filename) {
+    $filename = strtoupper($filename);
+    
+    // Common camera filename patterns
+    $patterns = [
+        'DSC_' => 'Nikon DSLR',
+        'IMG_' => 'Canon DSLR',
+        'P' . date('y') => 'Panasonic Camera',
+        '_MG_' => 'Canon Camera',
+        'DJI_' => 'DJI Drone',
+        'DCIM' => 'Digital Camera',
+        'WP_' => 'Windows Phone',
+        'PANO_' => 'Panorama Camera'
+    ];
+    
+    foreach ($patterns as $pattern => $camera) {
+        if (strpos($filename, $pattern) !== false) {
+            return $camera;
+        }
+    }
+    
+    // Check for smartphone patterns
+    if (preg_match('/^[0-9]{8}_[0-9]{6}/', $filename)) {
+        return 'Smartphone';
+    }
+    
+    return 'Unknown Camera';
+}
 
 /**
  * Check if cache is valid
@@ -81,7 +204,6 @@ function queryCommonsDatabase($category) {
         $db = Database::getInstance();
         
         // SQL Query to get category statistics
-        // This query retrieves comprehensive image data from categorylinks, page, and image tables
         $sql = "
             SELECT 
                 cl.cl_from,
@@ -97,7 +219,7 @@ function queryCommonsDatabase($category) {
                 img.img_media_type,
                 img.img_major_mime,
                 img.img_minor_mime,
-                COALESCE(img.img_metadata, '{}') as img_metadata,
+                COALESCE(img.img_metadata, '') as img_metadata,
                 COALESCE(actor.actor_name, 'Unknown') as uploader,
                 page.page_title,
                 page.page_len
@@ -128,26 +250,24 @@ function queryCommonsDatabase($category) {
             'uploaders' => [],
             'file_types' => [],
             'upload_timeline' => [],
-            'gps_enabled_count' => 0
+            'gps_enabled_count' => 0,
+            'camera_models' => []
         ];
         
         foreach ($results as $row) {
-            // Parse metadata for additional insights
-            $metadata = [];
-            $hasGPS = false;
+            // Parse EXIF metadata
+            $exifData = parseExifMetadata($row['img_metadata']);
             
-            if (!empty($row['img_metadata']) && $row['img_metadata'] !== '{}') {
-                $decodedMetadata = json_decode($row['img_metadata'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decodedMetadata)) {
-                    $metadata = $decodedMetadata;
-                    
-                    // Check for GPS coordinates
-                    if (isset($metadata['GPSLatitude']) || isset($metadata['GPSLongitude']) ||
-                        (isset($metadata['data']) && (isset($metadata['data']['GPSLatitude']) || isset($metadata['data']['GPSLongitude'])))) {
-                        $hasGPS = true;
-                        $statistics['gps_enabled_count']++;
-                    }
-                }
+            // Determine camera model
+            $cameraModel = $exifData['camera_model'];
+            if (empty($cameraModel) || $cameraModel === 'Unknown') {
+                $cameraModel = guessCameraFromFilename($row['filename']);
+            }
+            
+            // Full camera name with make if available
+            $fullCameraName = $cameraModel;
+            if (!empty($exifData['camera_make']) && !empty($exifData['camera_model'])) {
+                $fullCameraName = $exifData['camera_make'] . ' ' . $exifData['camera_model'];
             }
             
             // Collect statistics
@@ -175,6 +295,17 @@ function queryCommonsDatabase($category) {
             }
             $statistics['upload_timeline'][$uploadMonth]++;
             
+            // Track camera models
+            if (!isset($statistics['camera_models'][$fullCameraName])) {
+                $statistics['camera_models'][$fullCameraName] = 0;
+            }
+            $statistics['camera_models'][$fullCameraName]++;
+            
+            // GPS tracking
+            if ($exifData['has_gps']) {
+                $statistics['gps_enabled_count']++;
+            }
+            
             // Format row data
             $processedRows[] = [
                 'id' => (int)$row['cl_from'],
@@ -193,8 +324,12 @@ function queryCommonsDatabase($category) {
                 'media_type' => $row['img_media_type'],
                 'mime_type' => $mimeType,
                 'uploader' => $uploader,
-                'has_gps' => $hasGPS,
-                'metadata_available' => !empty($metadata)
+                'has_gps' => $exifData['has_gps'],
+                'gps_latitude' => $exifData['gps_latitude'],
+                'gps_longitude' => $exifData['gps_longitude'],
+                'camera_make' => $exifData['camera_make'],
+                'camera_model' => $fullCameraName,
+                'metadata_available' => !empty($row['img_metadata'])
             ];
         }
         
@@ -210,6 +345,10 @@ function queryCommonsDatabase($category) {
         
         // Sort file types
         arsort($statistics['file_types']);
+        
+        // Sort camera models
+        arsort($statistics['camera_models']);
+        $statistics['top_camera_models'] = array_slice($statistics['camera_models'], 0, 10, true);
         
         // Sort timeline
         ksort($statistics['upload_timeline']);
@@ -284,7 +423,8 @@ function loadSampleData($category = 'sample') {
             'uploaders' => [],
             'file_types' => [],
             'upload_timeline' => [],
-            'gps_enabled_count' => 0
+            'gps_enabled_count' => 0,
+            'camera_models' => []
         ];
         
         foreach ($sampleData['rows'] as $index => $row) {
@@ -313,6 +453,10 @@ function loadSampleData($category = 'sample') {
                     'mime_type' => 'image/jpeg',
                     'uploader' => $uploader,
                     'has_gps' => false,
+                    'gps_latitude' => null,
+                    'gps_longitude' => null,
+                    'camera_make' => null,
+                    'camera_model' => 'Unknown Camera',
                     'metadata_available' => !empty($row[6] ?? '')
                 ];
             }
@@ -322,6 +466,7 @@ function loadSampleData($category = 'sample') {
         $statistics['unique_uploaders'] = count($statistics['uploaders']);
         arsort($statistics['uploaders']);
         $statistics['top_uploaders'] = array_slice($statistics['uploaders'], 0, 10, true);
+        $statistics['top_camera_models'] = ['Unknown Camera' => count($transformedData)];
         
         return [
             'success' => true,
@@ -361,7 +506,8 @@ function generateMockData($category) {
         'uploaders' => [],
         'file_types' => [],
         'upload_timeline' => [],
-        'gps_enabled_count' => 0
+        'gps_enabled_count' => 0,
+        'camera_models' => []
     ];
     
     for ($i = 1; $i <= 50; $i++) {
@@ -372,7 +518,12 @@ function generateMockData($category) {
         $sizeBytes = rand(500000, 5000000);
         $uploader = $users[array_rand($users)];
         $mimeType = $fileTypes[array_rand($fileTypes)];
+        $camera = $cameras[array_rand($cameras)];
         $hasGPS = rand(1, 3) === 1; // 33% chance of GPS data
+        
+        // Mock GPS coordinates (India bounds)
+        $gpsLat = $hasGPS ? (8.0 + rand(0, 2800) / 100) : null; // 8.0 to 36.0
+        $gpsLon = $hasGPS ? (68.0 + rand(0, 3000) / 100) : null; // 68.0 to 98.0
         
         // Update statistics
         $statistics['total_size_bytes'] += $sizeBytes;
@@ -385,6 +536,11 @@ function generateMockData($category) {
             $statistics['file_types'][$mimeType] = 0;
         }
         $statistics['file_types'][$mimeType]++;
+        
+        if (!isset($statistics['camera_models'][$camera])) {
+            $statistics['camera_models'][$camera] = 0;
+        }
+        $statistics['camera_models'][$camera]++;
         
         if (!isset($statistics['upload_timeline'][$uploadMonth])) {
             $statistics['upload_timeline'][$uploadMonth] = 0;
@@ -413,6 +569,10 @@ function generateMockData($category) {
             'mime_type' => $mimeType,
             'uploader' => $uploader,
             'has_gps' => $hasGPS,
+            'gps_latitude' => $gpsLat,
+            'gps_longitude' => $gpsLon,
+            'camera_make' => explode(' ', $camera)[0],
+            'camera_model' => $camera,
             'metadata_available' => true
         ];
     }
@@ -424,6 +584,8 @@ function generateMockData($category) {
     arsort($statistics['uploaders']);
     $statistics['top_uploaders'] = array_slice($statistics['uploaders'], 0, 10, true);
     arsort($statistics['file_types']);
+    arsort($statistics['camera_models']);
+    $statistics['top_camera_models'] = array_slice($statistics['camera_models'], 0, 10, true);
     ksort($statistics['upload_timeline']);
     
     return [
