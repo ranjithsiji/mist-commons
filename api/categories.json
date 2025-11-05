@@ -1,13 +1,24 @@
 {
   "categories": [
     {
+      "id": "wlsc-2025",
+      "name": "Wiki Loves Schools 2025",
+      "slug": "wiki-loves-schools-2025",
+      "description": "Capturing photographs of educational institutions across India.",
+      "categoryName": "Images_from_Wiki_Loves_Schools_2025",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Wiki_Loves_Schools_Logo.svg/330px-Wiki_Loves_Schools_Logo.svg.png",
+      "year": "2025",
+      "color1": "#10B981",
+      "color2": "#059669"
+    },
+    {
       "id": "wle-india-2025",
       "name": "Wiki Loves Earth India 2025",
       "slug": "wiki-loves-earth-india-2025",
       "description": "Capturing natural heritage including national parks, wildlife sanctuaries, and protected areas across India.",
       "categoryName": "Images_from_Wiki_Loves_Earth_2025_in_India",
-      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Bandhavgarh_Tiger.jpg/256px-Bandhavgarh_Tiger.jpg",
-      "year": "2023",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Wiki_Loves_Earth_India.svg/250px-Wiki_Loves_Earth_India.svg.png",
+      "year": "2025",
       "color1": "#10B981",
       "color2": "#059669"
     },
