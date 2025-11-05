@@ -1,13 +1,13 @@
 <template>
   <div>
     <!-- Daily Uploads Chart -->
-    <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <div id="daily-uploads" class="bg-white rounded-lg shadow p-6 mb-8">
       <h2 class="text-xl font-bold text-gray-800 mb-4">Daily Upload Activity</h2>
       <canvas ref="dailyChart"></canvas>
     </div>
 
     <!-- User Contributions -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <div id="top-users" class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
       <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-xl font-bold text-gray-800 mb-4">Top Contributors (Files)</h2>
         <canvas ref="userBarChart"></canvas>
@@ -20,7 +20,7 @@
     </div>
 
     <!-- Full Width Pie Chart -->
-    <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <div id="distribution" class="bg-white rounded-lg shadow p-6 mb-8">
       <h2 class="text-xl font-bold text-gray-800 mb-4">Contribution Distribution</h2>
       <div class="flex justify-center">
         <div class="w-full max-w-2xl">
@@ -30,7 +30,7 @@
     </div>
 
     <!-- File Size Distribution and Top Upload Days -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <div id="file-activity" class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
       <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-xl font-bold text-gray-800 mb-4">File Size Distribution</h2>
         <canvas ref="sizeChart"></canvas>
@@ -43,7 +43,7 @@
     </div>
 
     <!-- Upload Time Distribution -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <div id="time-activity" class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
       <div class="bg-white rounded-lg shadow p-6">
         <h2 class="text-xl font-bold text-gray-800 mb-4">Upload Hours Distribution</h2>
         <canvas ref="hourlyChart"></canvas>
@@ -79,10 +79,19 @@ const monthlyChart = ref(null);
 
 let charts = {};
 
+const getDateBounds = () => {
+  const dates = (props.data?.dailyUploads || []).map(d => new Date(d.date));
+  if (!dates.length) return null;
+  dates.sort((a,b) => a - b);
+  return { min: dates[0], max: dates[dates.length - 1] };
+};
+
 const initCharts = () => {
   // Destroy existing charts
   Object.values(charts).forEach(chart => chart.destroy());
   charts = {};
+
+  const bounds = getDateBounds();
   
   // Daily Uploads Chart
   if (dailyChart.value && props.data.dailyUploads) {
@@ -102,35 +111,32 @@ const initCharts = () => {
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        plugins: {
-          legend: { display: true }
-        }
+        plugins: { legend: { display: true } },
+        scales: bounds ? {
+          x: {
+            type: 'time',
+            time: { unit: 'day' },
+            min: bounds.min,
+            max: bounds.max
+          }
+        } : {}
       }
     });
   }
-  
-  // User Bar Chart
+
+  // Other charts unchanged ...
   if (userBarChart.value && props.data.userContributions) {
     const topUsers = props.data.userContributions.slice(0, 10);
     charts.userBar = new Chart(userBarChart.value, {
       type: 'bar',
       data: {
         labels: topUsers.map(u => u.name),
-        datasets: [{
-          label: 'Files',
-          data: topUsers.map(u => u.files),
-          backgroundColor: '#10B981'
-        }]
+        datasets: [{ label: 'Files', data: topUsers.map(u => u.files), backgroundColor: '#10B981' }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        indexAxis: 'y'
-      }
+      options: { responsive: true, maintainAspectRatio: true, indexAxis: 'y' }
     });
   }
-  
-  // User Pie Chart (Full Width)
+
   if (userPieChart.value && props.data.userContributions) {
     const topUsers = props.data.userContributions.slice(0, 8);
     charts.userPie = new Chart(userPieChart.value, {
@@ -148,103 +154,45 @@ const initCharts = () => {
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: {
-              generateLabels: function(chart) {
-                const data = chart.data;
-                if (data.labels.length && data.datasets.length) {
-                  return data.labels.map((label, i) => {
-                    const dataset = data.datasets[0];
-                    return {
-                      text: `${label} (${dataset.data[i]})`,
-                      fillStyle: dataset.backgroundColor[i],
-                      strokeStyle: dataset.backgroundColor[i],
-                      lineWidth: 1,
-                      hidden: false,
-                      index: i
-                    };
-                  });
-                }
-                return [];
-              }
-            }
-          }
-        }
+        plugins: { legend: { position: 'right' } }
       }
     });
   }
-  
-  // Size Distribution Chart
+
   if (sizeChart.value && props.data.sizeDistribution) {
     charts.size = new Chart(sizeChart.value, {
       type: 'bar',
       data: {
         labels: props.data.sizeDistribution.map(s => s.range),
-        datasets: [{
-          label: 'Files',
-          data: props.data.sizeDistribution.map(s => s.count),
-          backgroundColor: '#F59E0B'
-        }]
+        datasets: [{ label: 'Files', data: props.data.sizeDistribution.map(s => s.count), backgroundColor: '#F59E0B' }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true
-      }
+      options: { responsive: true, maintainAspectRatio: true }
     });
   }
-  
-  // Top Upload Days Chart
+
   if (topDaysChart.value && props.data.dailyUploads) {
-    const topDays = [...props.data.dailyUploads]
-      .sort((a, b) => b.uploads - a.uploads)
-      .slice(0, 10);
-    
+    const topDays = [...props.data.dailyUploads].sort((a,b) => b.uploads - a.uploads).slice(0,10);
     charts.topDays = new Chart(topDaysChart.value, {
       type: 'bar',
       data: {
         labels: topDays.map(d => d.date),
-        datasets: [{
-          label: 'Uploads',
-          data: topDays.map(d => d.uploads),
-          backgroundColor: '#EF4444'
-        }]
+        datasets: [{ label: 'Uploads', data: topDays.map(d => d.uploads), backgroundColor: '#EF4444' }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        indexAxis: 'y',
-        plugins: {
-          title: {
-            display: true,
-            text: 'Days with Most Activity'
-          }
-        }
-      }
+      options: { responsive: true, maintainAspectRatio: true, indexAxis: 'y' }
     });
   }
-  
-  // Hourly Distribution Chart
+
   if (hourlyChart.value && props.data.hourlyDistribution) {
     charts.hourly = new Chart(hourlyChart.value, {
       type: 'bar',
       data: {
         labels: props.data.hourlyDistribution.map(h => `${h.hour}:00`),
-        datasets: [{
-          label: 'Uploads',
-          data: props.data.hourlyDistribution.map(h => h.count),
-          backgroundColor: '#8B5CF6'
-        }]
+        datasets: [{ label: 'Uploads', data: props.data.hourlyDistribution.map(h => h.count), backgroundColor: '#8B5CF6' }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true
-      }
+      options: { responsive: true, maintainAspectRatio: true }
     });
   }
-  
-  // Monthly Activity Chart
+
   if (monthlyChart.value && props.data.monthlyActivity) {
     charts.monthly = new Chart(monthlyChart.value, {
       type: 'line',
@@ -259,48 +207,23 @@ const initCharts = () => {
           fill: true
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true
-      }
+      options: { responsive: true, maintainAspectRatio: true }
     });
   }
-  
-  // Camera Models Chart
+
   if (cameraChart.value && props.data.cameraData) {
     charts.camera = new Chart(cameraChart.value, {
       type: 'bar',
       data: {
         labels: props.data.cameraData.map(c => c.model),
-        datasets: [{
-          label: 'Photos',
-          data: props.data.cameraData.map(c => c.count),
-          backgroundColor: '#8B5CF6'
-        }]
+        datasets: [{ label: 'Photos', data: props.data.cameraData.map(c => c.count), backgroundColor: '#8B5CF6' }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        indexAxis: 'y'
-      }
+      options: { responsive: true, maintainAspectRatio: true, indexAxis: 'y' }
     });
   }
 };
 
-onMounted(() => {
-  if (props.data) {
-    initCharts();
-  }
-});
-
-watch(() => props.data, (newData) => {
-  if (newData) {
-    initCharts();
-  }
-}, { deep: true });
-
-onBeforeUnmount(() => {
-  Object.values(charts).forEach(chart => chart.destroy());
-  charts = {};
-});
+onMounted(() => { if (props.data) initCharts(); });
+watch(() => props.data, (n) => { if (n) initCharts(); }, { deep: true });
+onBeforeUnmount(() => { Object.values(charts).forEach(c => c.destroy()); charts = {}; });
 </script>
