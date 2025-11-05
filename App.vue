@@ -28,9 +28,9 @@
                 </svg>
               </button>
               <div>
-                <h1 class="text-xl font-bold text-gray-900">{{ selectedCategory.displayName }}</h1>
+                <h1 class="text-xl font-bold text-gray-900">MIST : Category Analytics</h1>
                 <p class="text-sm text-gray-500 hidden sm:block">
-                  {{ selectedCategory.isCustom ? 'Custom Category Analytics' : 'Analytics Dashboard' }}
+                  {{ selectedCategory.isCustom ? 'Custom Category Analytics Dashboard' : 'Wikimedia Commons Analytics Dashboard' }}
                 </p>
               </div>
             </div>
