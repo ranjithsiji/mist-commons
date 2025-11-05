@@ -117,45 +117,10 @@
             </div>
           </div>
           
-          <!-- Custom category info -->
-          <div v-if="selectedCategory.isCustom && categoryValidation" class="mt-4">
-            <div 
-              :class="[
-                'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium',
-                categoryValidation.exists 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-yellow-100 text-yellow-800'
-              ]"
-            >
-              <svg 
-                :class="[
-                  'w-4 h-4 mr-2',
-                  categoryValidation.exists ? 'text-green-600' : 'text-yellow-600'
-                ]" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path 
-                  v-if="categoryValidation.exists"
-                  stroke-linecap="round" 
-                  stroke-linejoin="round" 
-                  stroke-width="2" 
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-                <path 
-                  v-else
-                  stroke-linecap="round" 
-                  stroke-linejoin="round" 
-                  stroke-width="2" 
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 15.5c-.77.833.192 2.5 1.732 2.5z"
-                ></path>
-              </svg>
-              {{ categoryValidation.exists 
-                ? `Valid category with ${categoryValidation.pageCount} pages` 
-                : 'Category not found on Commons' 
-              }}
-            </div>
+          <!-- Date Range Info -->
+          <div v-if="selectedCategory.startDate || selectedCategory.endDate" class="mt-2 text-sm text-gray-600">
+            <span v-if="selectedCategory.startDate">From {{ selectedCategory.startDate }}</span>
+            <span v-if="selectedCategory.endDate"> to {{ selectedCategory.endDate }}</span>
           </div>
         </div>
 
@@ -248,23 +213,17 @@ const mobileMenuOpen = ref(false);
 const categoryValidation = ref(null);
 const urlCopied = ref(false);
 
-// Helper function to normalize category names
-const normalizeCategoryName = (name) => {
-  // Remove 'Category:' prefix if present
-  let normalized = name.replace(/^Category:/i, '');
-  // Replace spaces with underscores for SQL queries
-  return normalized.replace(/\s+/g, '_');
-};
+const normalizeCategoryName = (name) => name.replace(/^Category:/i, '').replace(/\s+/g, '_');
+const getDisplayName = (name) => name.replace(/^Category:/i, '').replace(/_/g, ' ');
+const getUrlSlug = (name) => normalizeCategoryName(name);
 
-// Helper function to get display name (with spaces)
-const getDisplayName = (name) => {
-  // Remove 'Category:' prefix if present and convert underscores to spaces
-  return name.replace(/^Category:/i, '').replace(/_/g, ' ');
-};
-
-// Helper function to get URL slug (underscores, no Category: prefix)
-const getUrlSlug = (name) => {
-  return normalizeCategoryName(name);
+const getDateRange = (cat) => {
+  const start = cat.startDate || null;
+  let end = cat.endDate || null;
+  if (end && end.toUpperCase && end.toUpperCase() === 'TODAY') {
+    end = new Date().toISOString().slice(0,10);
+  }
+  return { startDate: start, endDate: end };
 };
 
 const loadCategories = async () => {
@@ -289,7 +248,8 @@ const selectCategory = (category) => {
   categoryValidation.value = null;
   mobileMenuOpen.value = false;
   updateURL(selectedCategory.value.urlSlug);
-  fetchData(selectedCategory.value.normalizedName, false);
+  const range = getDateRange(category);
+  fetchData(selectedCategory.value.normalizedName, false, range);
 };
 
 const selectCustomCategory = async (category) => {
@@ -302,18 +262,12 @@ const selectCustomCategory = async (category) => {
   };
   mobileMenuOpen.value = false;
   updateURL(selectedCategory.value.urlSlug);
-  
-  // Validate the custom category
   try {
     categoryValidation.value = await validateCategory(selectedCategory.value.displayName);
-    console.log('Category validation:', categoryValidation.value);
   } catch (err) {
-    console.error('Category validation error:', err);
     categoryValidation.value = { exists: false, error: err.message };
   }
-  
-  // Fetch data using normalized name (underscores for SQL query)
-  fetchData(selectedCategory.value.normalizedName, true);
+  fetchData(selectedCategory.value.normalizedName, true, getDateRange(category));
 };
 
 const backToHome = () => {
@@ -335,117 +289,60 @@ const updateURL = (slug) => {
 const loadFromURL = () => {
   const params = new URLSearchParams(window.location.search);
   let categorySlug = params.get('category');
-  
   if (categorySlug) {
-    // Decode the URL parameter
-    categorySlug = decodeURIComponent(categorySlug);
-    
-    // Remove 'Category:' prefix if present in URL (for backward compatibility)
-    categorySlug = categorySlug.replace(/^Category:/i, '');
-    
-    // Normalize to use underscores
+    categorySlug = decodeURIComponent(categorySlug).replace(/^Category:/i, '');
     const normalizedSlug = categorySlug.replace(/\s+/g, '_');
-    
-    // First try to find in predefined categories
-    const predefinedCategory = categories.value.find(cat => {
-      const catSlug = getUrlSlug(cat.categoryName || cat.name);
-      return catSlug === normalizedSlug;
-    });
-    
-    if (predefinedCategory) {
-      selectCategory(predefinedCategory);
-      return;
-    }
-    
-    // If not found in predefined, treat as custom category
-    const customCategory = {
-      id: `custom-${Date.now()}`,
-      name: normalizedSlug,
-      categoryName: normalizedSlug,
-      description: `Custom analysis for ${getDisplayName(normalizedSlug)}`,
-      icon: '🔍',
-      year: 'Custom',
-      color1: '#8B5CF6',
-      color2: '#7C3AED',
-      isCustom: true
-    };
-    
+    const predefinedCategory = categories.value.find(cat => getUrlSlug(cat.categoryName || cat.name) === normalizedSlug);
+    if (predefinedCategory) { selectCategory(predefinedCategory); return; }
+    const customCategory = { id: `custom-${Date.now()}`, name: normalizedSlug, categoryName: normalizedSlug, description: `Custom analysis for ${getDisplayName(normalizedSlug)}`, icon: '🔍', year: 'Custom', color1: '#8B5CF6', color2: '#7C3AED', isCustom: true };
     selectCustomCategory(customCategory);
   }
 };
 
-const fetchData = async (categoryName, isCustom = false) => {
+const fetchData = async (categoryName, isCustom = false, dateRange = {}) => {
   try {
-    // Use the normalized name (with underscores) for API calls
-    const jsonData = await fetchDashboardData(categoryName, isCustom);
+    const jsonData = await fetchDashboardData(categoryName, isCustom, dateRange);
     const processed = processData(jsonData);
-    
     stats.value = processed.stats;
     dashboardData.value = processed.data;
     geoData.value = processed.geoData;
   } catch (err) {
     console.error('Error fetching data:', err);
-    // Don't clear existing data on error, let user see the error message
   }
 };
 
 const refreshData = () => {
   if (selectedCategory.value) {
-    fetchData(selectedCategory.value.normalizedName, selectedCategory.value.isCustom);
+    const range = getDateRange(selectedCategory.value);
+    fetchData(selectedCategory.value.normalizedName, selectedCategory.value.isCustom, range);
   }
 };
 
 const getCommonsUrl = () => {
   if (!selectedCategory.value) return '#';
-  // Use display name with underscores for Commons URL
   const categoryName = selectedCategory.value.normalizedName;
   return `https://commons.wikimedia.org/wiki/Category:${categoryName}`;
 };
 
 const copyShareUrl = async () => {
   if (!selectedCategory.value) return;
-  
   const currentUrl = window.location.href;
-  
   try {
     await navigator.clipboard.writeText(currentUrl);
     urlCopied.value = true;
-    setTimeout(() => {
-      urlCopied.value = false;
-    }, 2000);
+    setTimeout(() => { urlCopied.value = false; }, 2000);
   } catch (err) {
-    console.error('Failed to copy URL:', err);
-    // Fallback for older browsers
     const textArea = document.createElement('textarea');
-    textArea.value = currentUrl;
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      urlCopied.value = true;
-      setTimeout(() => {
-        urlCopied.value = false;
-      }, 2000);
-    } catch (fallbackErr) {
-      console.error('Fallback copy failed:', fallbackErr);
-    }
+    textArea.value = currentUrl; document.body.appendChild(textArea); textArea.select();
+    try { document.execCommand('copy'); urlCopied.value = true; setTimeout(() => { urlCopied.value = false; }, 2000); } catch {}
     document.body.removeChild(textArea);
   }
 };
 
-onMounted(() => {
-  loadCategories();
-});
-
-watch(categories, () => {
-  if (categories.value.length > 0) {
-    loadFromURL();
-  }
-});
+onMounted(() => { loadCategories(); });
+watch(categories, () => { if (categories.value.length > 0) { loadFromURL(); } });
 </script>
 
 <style>
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 </style>
