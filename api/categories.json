@@ -9,7 +9,9 @@
       "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Wiki_Loves_Schools_Logo.svg/330px-Wiki_Loves_Schools_Logo.svg.png",
       "year": "2025",
       "color1": "#10B981",
-      "color2": "#059669"
+      "color2": "#059669",
+      "startDate": "2025-08-01",
+      "endDate": "TODAY"
     },
     {
       "id": "wle-india-2025",
@@ -20,10 +22,12 @@
       "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Wiki_Loves_Earth_India.svg/250px-Wiki_Loves_Earth_India.svg.png",
       "year": "2025",
       "color1": "#10B981",
-      "color2": "#059669"
+      "color2": "#059669",
+      "startDate": "2025-06-01",
+      "endDate": "2025-06-30"
     },
     {
-      "id": "wlf-india-2024",
+      "id": "wlf-india-2025",
       "name": "Wiki Loves Folklore India 2025",
       "slug": "wiki-loves-folklore-india-2025",
       "description": "Photography contest documenting the diverse folk cultures in India",
@@ -31,7 +35,9 @@
       "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Wiki_Loves_Folklore_Logo.svg/355px-Wiki_Loves_Folklore_Logo.svg.png",
       "year": "2025",
       "color1": "#3B82F6",
-      "color2": "#1D4ED8"
+      "color2": "#1D4ED8",
+      "startDate": "2025-02-01",
+      "endDate": "2025-02-28"
     },
     {
       "id": "wlb-india-2024",
@@ -42,7 +48,9 @@
       "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Wiki_Loves_Birds_India_Logo_commons.svg/250px-Wiki_Loves_Birds_India_Logo_commons.svg.png",
       "year": "2024",
       "color1": "#3B82F6",
-      "color2": "#1D4ED8"
+      "color2": "#1D4ED8",
+      "startDate": "2024-09-01",
+      "endDate": "2024-09-30"
     },
     {
       "id": "wlm-india-2023",
@@ -53,7 +61,9 @@
       "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/WLM_Logo_India.svg/500px-WLM_Logo_India.svg.png",
       "year": "2023",
       "color1": "#F59E0B",
-      "color2": "#D97706"
+      "color2": "#D97706",
+      "startDate": "2023-09-01",
+      "endDate": "2023-09-30"
     },
     {
       "id": "wla-2023",
@@ -64,7 +74,9 @@
       "icon": "https://upload.wikimedia.org/wikipedia/commons/3/35/Wiki-Loves-Africa-logo.png",
       "year": "2023",
       "color1": "#EF4444",
-      "color2": "#DC2626"
+      "color2": "#DC2626",
+      "startDate": "2023-02-01",
+      "endDate": "2023-02-28"
     },
     {
       "id": "wlf-2023",
@@ -75,7 +87,9 @@
       "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Wiki_Loves_Folklore_Logo.svg/250px-Wiki_Loves_Folklore_Logo.svg.png",
       "year": "2023",
       "color1": "#8B5CF6",
-      "color2": "#7C3AED"
+      "color2": "#7C3AED",
+      "startDate": "2023-02-01",
+      "endDate": "2023-02-28"
     }
   ]
 }
