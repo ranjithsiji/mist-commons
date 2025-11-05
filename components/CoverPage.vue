@@ -52,6 +52,13 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <!-- Hero Section -->
       <div class="text-center mb-4 animate-fade-in">
+        <!-- MIST Logo -->
+        <div class="flex justify-center mb-6">
+          <div class="w-24 h-24 md:w-32 md:h-32 transition-transform duration-300 hover:scale-105">
+            <img src="/mistlogo.svg" alt="MIST Logo" class="w-full h-full object-contain drop-shadow-lg" />
+          </div>
+        </div>
+        
         <h2 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-wikimedia-blue via-wikimedia-green to-wikimedia-blue bg-clip-text text-transparent mb-4 leading-tight">
           Wikimedia Commons Analytics
         </h2>
