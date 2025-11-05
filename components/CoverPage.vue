@@ -349,18 +349,19 @@ const categoryInput = ref(null);
 
 let searchTimeout = null;
 
+// Helper function to normalize category names (remove Category: prefix, replace spaces with underscores)
+const normalizeCategoryName = (name) => {
+  return name.replace(/^Category:/i, '').replace(/\s+/g, '_');
+};
+
 // Computed property for current Commons URL
 const currentCommonsUrl = computed(() => {
   if (!customCategoryQuery.value.trim()) return null;
   
   let categoryName = customCategoryQuery.value.trim();
-  // Add "Category:" prefix if not present
-  if (!categoryName.toLowerCase().startsWith('category:')) {
-    categoryName = `Category:${categoryName}`;
-  }
-  
-  const encodedName = encodeURIComponent(categoryName.replace(/ /g, '_'));
-  return `https://commons.wikimedia.org/wiki/${encodedName}`;
+  // Remove Category: prefix if present, then normalize
+  const normalizedName = normalizeCategoryName(categoryName);
+  return `https://commons.wikimedia.org/wiki/Category:${normalizedName}`;
 });
 
 // Watch for URL changes to populate the input field
@@ -369,8 +370,11 @@ watch(() => {
   return params.get('category');
 }, (categorySlug) => {
   if (categorySlug && !customCategoryQuery.value) {
+    // Decode and convert underscores back to spaces for display
     const decodedSlug = decodeURIComponent(categorySlug);
-    customCategoryQuery.value = decodedSlug.replace(/_/g, ' ');
+    // Remove Category: prefix if present in URL
+    const cleanSlug = decodedSlug.replace(/^Category:/i, '');
+    customCategoryQuery.value = cleanSlug.replace(/_/g, ' ');
   }
 }, { immediate: true });
 
@@ -519,20 +523,23 @@ const analyzeCustomCategory = () => {
   const query = customCategoryQuery.value.trim();
   if (!query) return;
   
+  // Normalize the category name (remove Category: prefix, use underscores)
+  const normalizedName = normalizeCategoryName(query);
+  
   // Create a custom category object
   const customCategory = {
     id: `custom-${Date.now()}`,
-    name: query.replace(/\ /g, '_').replace('Category:', ''),
-    slug: query.replace(/\ /g, '_'),
-    description: `Custom analysis for ${query}`,
-    categoryName: query.startsWith('Category:') ? query.substring(9) : query,
+    name: normalizedName,
+    slug: normalizedName,
+    categoryName: normalizedName,
+    description: `Custom analysis for ${query.replace(/^Category:/i, '')}`,
     icon: '🔍',
     year: 'Custom',
     color1: '#8B5CF6',
     color2: '#7C3AED',
     isCustom: true
   };
-  console.log(customCategory);
+  console.log('Creating custom category:', customCategory);
   
   hideSuggestions();
   emit('custom', customCategory);
