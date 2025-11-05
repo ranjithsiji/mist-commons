@@ -29,7 +29,7 @@
                 </svg>
               </button>
               <div>
-                <h1 class="text-xl font-bold text-gray-900">{{ selectedCategory.categoryName }}</h1>
+                <h1 class="text-xl font-bold text-gray-900">{{ selectedCategory.displayName }}</h1>
                 <p class="text-sm text-gray-500 hidden sm:block">
                   {{ selectedCategory.isCustom ? 'Custom Category Analytics' : 'Analytics Dashboard' }}
                 </p>
@@ -94,7 +94,7 @@
         <!-- existing main content -->
         <div class="mb-8 animate-fade-in">
           <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-            {{ selectedCategory.categoryName }} Analytics
+            {{ selectedCategory.displayName }} Analytics
           </h2>
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <p class="text-lg text-gray-600 leading-relaxed">
@@ -234,6 +234,25 @@ const mobileMenuOpen = ref(false);
 const categoryValidation = ref(null);
 const urlCopied = ref(false);
 
+// Helper function to normalize category names
+const normalizeCategoryName = (name) => {
+  // Remove 'Category:' prefix if present
+  let normalized = name.replace(/^Category:/i, '');
+  // Replace spaces with underscores for SQL queries
+  return normalized.replace(/\s+/g, '_');
+};
+
+// Helper function to get display name (with spaces)
+const getDisplayName = (name) => {
+  // Remove 'Category:' prefix if present and convert underscores to spaces
+  return name.replace(/^Category:/i, '').replace(/_/g, ' ');
+};
+
+// Helper function to get URL slug (underscores, no Category: prefix)
+const getUrlSlug = (name) => {
+  return normalizeCategoryName(name);
+};
+
 const loadCategories = async () => {
   loadingCategories.value = true;
   try {
@@ -247,29 +266,40 @@ const loadCategories = async () => {
 };
 
 const selectCategory = (category) => {
-  selectedCategory.value = category;
+  selectedCategory.value = {
+    ...category,
+    displayName: getDisplayName(category.categoryName || category.name),
+    normalizedName: normalizeCategoryName(category.categoryName || category.name),
+    urlSlug: getUrlSlug(category.categoryName || category.name)
+  };
   categoryValidation.value = null;
   mobileMenuOpen.value = false;
-  updateURL(category.slug);
-  fetchData(category.categoryName, false);
+  updateURL(selectedCategory.value.urlSlug);
+  fetchData(selectedCategory.value.normalizedName, false);
 };
 
 const selectCustomCategory = async (category) => {
-  selectedCategory.value = category;
+  selectedCategory.value = {
+    ...category,
+    displayName: getDisplayName(category.categoryName || category.name),
+    normalizedName: normalizeCategoryName(category.categoryName || category.name),
+    urlSlug: getUrlSlug(category.categoryName || category.name),
+    isCustom: true
+  };
   mobileMenuOpen.value = false;
-  updateURL(category.slug);
+  updateURL(selectedCategory.value.urlSlug);
   
   // Validate the custom category
   try {
-    categoryValidation.value = await validateCategory(category.categoryName);
+    categoryValidation.value = await validateCategory(selectedCategory.value.displayName);
     console.log('Category validation:', categoryValidation.value);
   } catch (err) {
     console.error('Category validation error:', err);
     categoryValidation.value = { exists: false, error: err.message };
   }
   
-  // Fetch data regardless of validation (server might have different data)
-  fetchData(category.name, true);
+  // Fetch data using normalized name (underscores for SQL query)
+  fetchData(selectedCategory.value.normalizedName, true);
 };
 
 const backToHome = () => {
@@ -290,13 +320,24 @@ const updateURL = (slug) => {
 
 const loadFromURL = () => {
   const params = new URLSearchParams(window.location.search);
-  const categorySlug = params.get('category');
+  let categorySlug = params.get('category');
   
   if (categorySlug) {
-    const decodedSlug = decodeURIComponent(categorySlug);
+    // Decode the URL parameter
+    categorySlug = decodeURIComponent(categorySlug);
+    
+    // Remove 'Category:' prefix if present in URL (for backward compatibility)
+    categorySlug = categorySlug.replace(/^Category:/i, '');
+    
+    // Normalize to use underscores
+    const normalizedSlug = categorySlug.replace(/\s+/g, '_');
     
     // First try to find in predefined categories
-    const predefinedCategory = categories.value.find(cat => cat.slug === decodedSlug);
+    const predefinedCategory = categories.value.find(cat => {
+      const catSlug = getUrlSlug(cat.categoryName || cat.name);
+      return catSlug === normalizedSlug;
+    });
+    
     if (predefinedCategory) {
       selectCategory(predefinedCategory);
       return;
@@ -305,10 +346,9 @@ const loadFromURL = () => {
     // If not found in predefined, treat as custom category
     const customCategory = {
       id: `custom-${Date.now()}`,
-      name: decodedSlug.replace(/_/g, ' '),
-      slug: decodedSlug,
-      description: `Custom analysis for ${decodedSlug.replace(/_/g, ' ')}`,
-      categoryName: decodedSlug.replace(/_/g, ' '),
+      name: normalizedSlug,
+      categoryName: normalizedSlug,
+      description: `Custom analysis for ${getDisplayName(normalizedSlug)}`,
       icon: '🔍',
       year: 'Custom',
       color1: '#8B5CF6',
@@ -322,6 +362,7 @@ const loadFromURL = () => {
 
 const fetchData = async (categoryName, isCustom = false) => {
   try {
+    // Use the normalized name (with underscores) for API calls
     const jsonData = await fetchDashboardData(categoryName, isCustom);
     const processed = processData(jsonData);
     
@@ -336,15 +377,15 @@ const fetchData = async (categoryName, isCustom = false) => {
 
 const refreshData = () => {
   if (selectedCategory.value) {
-    fetchData(selectedCategory.value.categoryName, selectedCategory.value.isCustom);
+    fetchData(selectedCategory.value.normalizedName, selectedCategory.value.isCustom);
   }
 };
 
 const getCommonsUrl = () => {
   if (!selectedCategory.value) return '#';
-  const categoryName = selectedCategory.value.categoryName;
-  const encodedName = encodeURIComponent(categoryName.replace(/ /g, '_'));
-  return `https://commons.wikimedia.org/wiki/Category:${encodedName}`;
+  // Use display name with underscores for Commons URL
+  const categoryName = selectedCategory.value.normalizedName;
+  return `https://commons.wikimedia.org/wiki/Category:${categoryName}`;
 };
 
 const copyShareUrl = async () => {
