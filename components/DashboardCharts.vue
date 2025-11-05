@@ -60,6 +60,7 @@
 <script setup>
 import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
 import Chart from 'chart.js/auto';
+import 'chartjs-adapter-date-fns';
 
 const props = defineProps({
   data: {
