@@ -63,7 +63,7 @@
           
           <!-- Main Heading -->
           <div class="flex-1">
-            <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 bg-clip-text text-transparent leading-tight">
+            <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-wikimedia-blue via-wikimedia-green to-wikimedia-blue bg-clip-text text-transparent leading-tight">
               Wikimedia Commons Analytics
             </h2>
           </div>
@@ -77,7 +77,7 @@
       <div class="mb-16 animate-fade-in">
         <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 p-6 max-w-3xl mx-auto">
           <div class="text-center mb-4">
-            <h3 class="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent mb-2">Category of Campaign</h3>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">Category of Campaign</h3>
             <p class="text-gray-600">Search for any Wikimedia Commons category of a campaign to analyze</p>
           </div>
           
@@ -95,12 +95,12 @@
                   @focus="showSuggestions = customCategoryQuery.length >= 3"
                   type="text"
                   placeholder="Type category name:"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wikimedia-blue focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
                 />
                 
                 <!-- Loading indicator in input -->
                 <div v-if="searchingCategories" class="absolute right-4 top-1/2 transform -translate-y-1/2">
-                  <div class="w-5 h-5 border-2 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
+                  <div class="w-5 h-5 border-2 border-wikimedia-blue/20 border-t-wikimedia-blue rounded-full animate-spin"></div>
                 </div>
                 
                 <!-- Autocomplete dropdown -->
@@ -116,7 +116,7 @@
                     :class="[
                       'px-4 py-3 cursor-pointer transition-colors duration-150 border-b border-gray-100 last:border-b-0',
                       selectedSuggestionIndex === index
-                        ? 'bg-purple-500 text-white'
+                        ? 'bg-wikimedia-blue text-white'
                         : 'hover:bg-gray-50 text-gray-900'
                     ]"
                   >
@@ -125,7 +125,7 @@
                       v-if="suggestion.categoryinfo && suggestion.categoryinfo.pages"
                       :class="[
                         'text-sm mt-1',
-                        selectedSuggestionIndex === index ? 'text-purple-100' : 'text-gray-500'
+                        selectedSuggestionIndex === index ? 'text-blue-100' : 'text-gray-500'
                       ]"
                     >
                       {{ suggestion.categoryinfo.pages }} pages
@@ -134,7 +134,7 @@
                     <div 
                       :class="[
                         'text-xs mt-1 flex items-center',
-                        selectedSuggestionIndex === index ? 'text-purple-200' : 'text-gray-400'
+                        selectedSuggestionIndex === index ? 'text-blue-200' : 'text-gray-400'
                       ]"
                     >
                       <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,7 +149,7 @@
               <button
                 @click="analyzeCustomCategory"
                 :disabled="!customCategoryQuery.trim() || searchingCategories"
-                class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium"
+                class="px-6 py-3 bg-gradient-to-r from-wikimedia-blue to-wikimedia-green text-white rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-medium"
               >
                 <svg v-if="searchingCategories" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -163,9 +163,9 @@
             </div>
             
             <!-- Current category Commons link -->
-            <div v-if="currentCommonsUrl" class="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <div v-if="currentCommonsUrl" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <div class="flex items-center justify-between">
-                <div class="flex items-center text-sm text-purple-700">
+                <div class="flex items-center text-sm text-blue-700">
                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
                   </svg>
@@ -175,13 +175,13 @@
                   :href="currentCommonsUrl" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  class="text-purple-600 hover:text-purple-800 text-sm font-medium hover:underline transition-colors duration-200"
+                  class="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline transition-colors duration-200"
                 >
                   View Category on Wikimedia Commons →
                 </a>
                 </div>
               </div>
-              <div class="mt-1 text-xs text-purple-600 font-mono break-all">
+              <div class="mt-1 text-xs text-blue-600 font-mono break-all">
                URL :  {{ currentCommonsUrl }}
               </div>
             </div>
@@ -202,8 +202,8 @@
       <!-- Loading Categories -->
       <div v-if="loading" class="text-center py-20 animate-fade-in">
         <div class="relative inline-block">
-          <div class="w-16 h-16 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
-          <div class="absolute inset-0 w-16 h-16 border-4 border-transparent border-r-pink-500 rounded-full animate-spin" style="animation-delay: -0.5s; animation-direction: reverse;"></div>
+          <div class="w-16 h-16 border-4 border-wikimedia-blue/20 border-t-wikimedia-blue rounded-full animate-spin"></div>
+          <div class="absolute inset-0 w-16 h-16 border-4 border-transparent border-r-wikimedia-green rounded-full animate-spin" style="animation-delay: -0.5s; animation-direction: reverse;"></div>
         </div>
         <p class="mt-6 text-xl text-gray-600 font-medium">Loading categories...</p>
         <p class="mt-2 text-gray-500">Fetching contest data from Wikimedia Commons</p>
@@ -212,7 +212,7 @@
       <!-- Categories Section -->
       <div v-else-if="categories.length > 0" class="animate-slide-up">
         <div class="text-center mb-12">
-          <h3 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent mb-3">Featured Contest Categories</h3>
+          <h3 class="text-3xl font-bold text-gray-800 mb-3">Featured Contest Categories</h3>
           <p class="text-gray-600 text-lg">{{ categories.length }} contest{{ categories.length !== 1 ? 's' : '' }} available for analysis</p>
         </div>
         
@@ -229,7 +229,7 @@
               <!-- Icon Section -->
               <div 
                 class="flex items-center justify-center w-16 h-16 rounded-lg mr-6 flex-shrink-0 group-hover:scale-110 transition-transform duration-300"
-                :style="{ background: `linear-gradient(135deg, ${category.color1 || '#9333ea'} 0%, ${category.color2 || '#ec4899'} 100%)` }"
+                :style="{ background: `linear-gradient(135deg, ${category.color1 || '#0645ad'} 0%, ${category.color2 || '#00af89'} 100%)` }"
               >
                 <span class="text-2xl">{{ category.icon || '📊' }}</span>
               </div>
@@ -238,7 +238,7 @@
               <div class="flex-1 min-w-0">
                 <div class="flex items-start justify-between">
                   <div class="flex-1">
-                    <h3 class="text-xl font-bold text-gray-800 mb-2 group-hover:text-purple-600 transition-colors duration-300">
+                    <h3 class="text-xl font-bold text-gray-800 mb-2 group-hover:text-wikimedia-blue transition-colors duration-300">
                       {{ category.name }}
                     </h3>
                     <p class="text-gray-600 text-sm mb-3 line-clamp-2 leading-relaxed">
@@ -248,7 +248,7 @@
                       <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
                         {{ category.year || 'Contest' }}
                       </span>
-                      <div class="flex items-center text-purple-600 font-medium text-sm group-hover:translate-x-1 transition-transform duration-300">
+                      <div class="flex items-center text-wikimedia-blue font-medium text-sm group-hover:translate-x-1 transition-transform duration-300">
                         <span class="mr-1">View Analytics</span>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
@@ -303,9 +303,9 @@
           </div>
         </div>
         <p class="text-gray-500 text-sm mb-2">
-          Powered by <a href="https://commons.wikimedia.org/" target="_blank"></a><span class="font-semibold text-purple-600">Wikimedia Commons API</span> • 
-          Built with <a href="https://vuejs.org/" target="_blank"><span class="font-semibold text-pink-500">Vue.js</span></a> & 
-        <a href="https://tailwindcss.com/" target="_blank"><span class="font-semibold text-purple-500">TailwindCSS</span></a>
+          Powered by <a href="https://commons.wikimedia.org/" target="_blank"></a><span class="font-semibold text-wikimedia-blue">Wikimedia Commons API</span> • 
+          Built with <a href="https://vuejs.org/" target="_blank"><span class="font-semibold text-wikimedia-green">Vue.js</span></a> & 
+        <a href="https://tailwindcss.com/" target="_blank"><span class="font-semibold text-wikimedia-purple">TailwindCSS</span></a>
         </p>
         <p class="text-gray-400 text-xs">
           Analyzing media contributions from the world's largest free media repository
