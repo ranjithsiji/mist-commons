@@ -14,6 +14,19 @@
       "endDate": "TODAY"
     },
     {
+      "id": "wlo-2025",
+      "name": "Wiki Loves Onam 2025",
+      "slug": "wiki-loves-onam-2025",
+      "description": "Capture and celebrate the essence of the vibrant and festive spirit of Onam.",
+      "categoryName": "Images_from_Wiki_Loves_Onam_2025",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Wiki_Loves_Onam_logo_%28Green%29.svg/250px-Wiki_Loves_Onam_logo_%28Green%29.svg.png",
+      "year": "2025",
+      "color1": "#10B981",
+      "color2": "#059669",
+      "startDate": "2025-08-15",
+      "endDate": "2025-10-05"
+    },
+    {
       "id": "wle-india-2025",
       "name": "Wiki Loves Earth India 2025",
       "slug": "wiki-loves-earth-india-2025",
@@ -38,6 +51,19 @@
       "color2": "#1D4ED8",
       "startDate": "2025-01-30",
       "endDate": "2025-04-04"
+    },
+    {
+      "id": "wlo-2024",
+      "name": "Wiki Loves Onam 2024",
+      "slug": "wiki-loves-onam-2024",
+      "description": "Capture and celebrate the essence of the vibrant and festive spirit of Onam.",
+      "categoryName": "Images_from_Wiki_Loves_Onam_2024",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Wiki_Loves_Onam_logo_%28Green%29.svg/250px-Wiki_Loves_Onam_logo_%28Green%29.svg.png",
+      "year": "2025",
+      "color1": "#10B981",
+      "color2": "#059669",
+      "startDate": "2025-08-15",
+      "endDate": "2025-10-05"
     },
     {
       "id": "wlb-india-2024",
