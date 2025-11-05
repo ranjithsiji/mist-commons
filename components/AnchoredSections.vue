@@ -23,10 +23,10 @@
 </template>
 
 <script setup>
-import StatsCards from './components/StatsCards.vue';
-import PhotoMap from './components/PhotoMap.vue';
-import DashboardCharts from './components/DashboardCharts.vue';
-import ContributorsTable from './components/ContributorsTable.vue';
+import StatsCards from './StatsCards.vue';
+import PhotoMap from './PhotoMap.vue';
+import DashboardCharts from './DashboardCharts.vue';
+import ContributorsTable from './ContributorsTable.vue';
 
 const props = defineProps({
   dashboardData: { type: Object, required: true },
