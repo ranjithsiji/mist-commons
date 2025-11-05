@@ -43,3 +43,17 @@ npm run build
 - Leaflet.js
 - PHP 8.1+
 - MySQL/MariaDB
+
+## Contributing
+
+**Note:** This is an early-stage project maintained by a small team. Response times on issues and pull requests may vary.
+
+Contributions are welcome. Please open an issue to discuss proposed changes.
+
+## License
+
+GPL v3.0 or later - see LICENSE file for details.
+
+## Credits
+
+Created by [Ranjithsiji](https://w.wiki/tN), Supported by [Wikimedians of Kerala User Group](https://w.wiki/t9) and [Sahya Digital Conservation Foundation](https://w.wiki/7m9h).
