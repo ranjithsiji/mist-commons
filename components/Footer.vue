@@ -21,8 +21,8 @@
       <div class="mt-6 pt-6 border-t border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <p class="text-xs text-gray-500">© {{ new Date().getFullYear() }} Commons Analytics. Built with Vue.js and TailwindCSS.</p>
         <div class="flex items-center gap-4 text-xs text-gray-500">
-          <span>Open Source</span>
-          <span>Community Driven</span>
+          <span>Source Code</span>
+          <span>License</span>
           <span>Global Impact</span>
         </div>
       </div>
