@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 export function useDataProcessor() {
   const processData = (jsonData) => {
-    console.log('Processing API data:', jsonData);
+    //console.log('Processing API data:', jsonData);
     
     // Handle the original "rows" format from Quarry SQL output
     const rows = jsonData.rows || [];

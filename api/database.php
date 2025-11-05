@@ -2,8 +2,8 @@
 // database.php
 
 // Error reporting for debugging
-error_reporting(-1);
-ini_set('display_errors', 1);
+//error_reporting(-1);
+//ini_set('display_errors', 1);
 
 /**
  * Database class for connecting to Wikimedia Commons replica
