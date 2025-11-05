@@ -1,12 +1,34 @@
 {
   "categories": [
     {
+      "id": "wle-india-2025",
+      "name": "Wiki Loves Earth India 2025",
+      "slug": "wiki-loves-earth-india-2025",
+      "description": "Capturing natural heritage including national parks, wildlife sanctuaries, and protected areas across India.",
+      "categoryName": "Images_from_Wiki_Loves_Earth_2025_in_India",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Bandhavgarh_Tiger.jpg/256px-Bandhavgarh_Tiger.jpg",
+      "year": "2023",
+      "color1": "#10B981",
+      "color2": "#059669"
+    },
+    {
+      "id": "wlf-india-2024",
+      "name": "Wiki Loves Folklore India 2025",
+      "slug": "wiki-loves-folklore-india-2025",
+      "description": "Photography contest documenting the diverse folk cultures in India",
+      "categoryName": "Images_from_Wiki_Loves_Folklore_2025_in_India",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Wiki_Loves_Folklore_Logo.svg/355px-Wiki_Loves_Folklore_Logo.svg.png",
+      "year": "2025",
+      "color1": "#3B82F6",
+      "color2": "#1D4ED8"
+    },
+    {
       "id": "wlb-india-2024",
       "name": "Wiki Loves Birds India 2024",
       "slug": "wiki-loves-birds-india-2024",
       "description": "Photography contest celebrating Indian bird diversity",
-      "categoryName": "Images_from_Wiki_Loves_Birds_India_2024_(maintenance-earth)",
-      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/House_sparrow04.jpg/256px-House_sparrow04.jpg",
+      "categoryName": "Images_from_Wiki_Loves_Birds_India_2024",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Wiki_Loves_Birds_India_Logo_commons.svg/250px-Wiki_Loves_Birds_India_Logo_commons.svg.png",
       "year": "2024",
       "color1": "#3B82F6",
       "color2": "#1D4ED8"
@@ -17,21 +39,10 @@
       "slug": "wiki-loves-monuments-india-2023",
       "description": "Documenting India's architectural heritage",
       "categoryName": "Images_from_Wiki_Loves_Monuments_2023_in_India",
-      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Taj_Mahal_in_March_2004.jpg/256px-Taj_Mahal_in_March_2004.jpg",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/WLM_Logo_India.svg/500px-WLM_Logo_India.svg.png",
       "year": "2023",
       "color1": "#F59E0B",
       "color2": "#D97706"
-    },
-    {
-      "id": "wle-india-2023",
-      "name": "Wiki Loves Earth India 2023",
-      "slug": "wiki-loves-earth-india-2023",
-      "description": "Capturing natural heritage and protected areas",
-      "categoryName": "Images_from_Wiki_Loves_Earth_2023_in_India",
-      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Bandhavgarh_Tiger.jpg/256px-Bandhavgarh_Tiger.jpg",
-      "year": "2023",
-      "color1": "#10B981",
-      "color2": "#059669"
     },
     {
       "id": "wla-2023",
@@ -39,32 +50,21 @@
       "slug": "wiki-loves-africa-2023",
       "description": "Celebrating African culture and heritage",
       "categoryName": "Images_from_Wiki_Loves_Africa_2023",
-      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Lion_waiting_in_Namibia.jpg/256px-Lion_waiting_in_Namibia.jpg",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/3/35/Wiki-Loves-Africa-logo.png",
       "year": "2023",
       "color1": "#EF4444",
       "color2": "#DC2626"
     },
     {
       "id": "wlf-2023",
-      "name": "Wiki Loves Folklore 2023",
-      "slug": "wiki-loves-folklore-2023",
-      "description": "Traditional cultural expressions and practices",
-      "categoryName": "Images_from_Wiki_Loves_Folklore_2023",
-      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Kathakali_Performance_-_Theyyam_-_Kerala.jpg/256px-Kathakali_Performance_-_Theyyam_-_Kerala.jpg",
+      "name": "Wiki Loves Folklore 2023 in India",
+      "slug": "wiki-loves-folklore-2023-in-india",
+      "description": "Photography contest documenting the diverse folk cultures in India",
+      "categoryName": "Images_from_Wiki_Loves_Folklore_2023_in_India",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Wiki_Loves_Folklore_Logo.svg/250px-Wiki_Loves_Folklore_Logo.svg.png",
       "year": "2023",
       "color1": "#8B5CF6",
       "color2": "#7C3AED"
-    },
-    {
-      "id": "ceebies-2022",
-      "name": "CEE Spring 2022",
-      "slug": "cee-spring-2022",
-      "description": "Central and Eastern European photo contest",
-      "categoryName": "Images_from_CEE_Spring_2022",
-      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Cherry_Blossoms_-_Washington%2C_D.C.jpg/256px-Cherry_Blossoms_-_Washington%2C_D.C.jpg",
-      "year": "2022",
-      "color1": "#EC4899",
-      "color2": "#DB2777"
     }
   ]
 }
