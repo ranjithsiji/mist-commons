@@ -56,7 +56,7 @@ function queryCommonsDatabase($category, $startDate = null, $endDate = null) {
                 {$dateFilter}
             ORDER BY 
                 img.img_timestamp DESC
-            LIMIT 10000
+            LIMIT 100000
         ";
         $results = $db->executeQuery($sql, $params);
         $rows = [];
