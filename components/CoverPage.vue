@@ -12,8 +12,8 @@
               </svg>
             </div>
             <div>
-              <h1 class="text-xl font-bold text-gray-900">Commons Analytics</h1>
-              <p class="text-sm text-gray-500 hidden sm:block">Dashboard</p>
+              <h1 class="text-xl font-bold text-gray-900">MIST : Analytics</h1>
+              <p class="text-sm text-gray-500 hidden sm:block">Media Statistics and Analytics Dashboard for Campaigns</p>
             </div>
           </div>
           
@@ -51,24 +51,20 @@
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <!-- Hero Section -->
-      <div class="text-center mb-16 animate-fade-in">
+      <div class="text-center mb-4 animate-fade-in">
         <h2 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-wikimedia-blue via-wikimedia-green to-wikimedia-blue bg-clip-text text-transparent mb-4 leading-tight">
           Wikimedia Commons Analytics
         </h2>
-        <p class="text-lg md:text-xl text-gray-600 mb-6 max-w-3xl mx-auto leading-relaxed">
-          Explore contest statistics, contributor insights, and media analytics from Wikimedia Commons photography contests
-        </p>
-        <p class="text-gray-500 max-w-2xl mx-auto">
-          Select a contest category below or search for a custom category
+        <p class="text-lg md:text-xl text-gray-600 mb-1 max-w-3xl mx-auto leading-relaxed">
+         View Statistics of a Wikimedia Commons photography campaign
         </p>
       </div>
-
       <!-- Custom Category Search Section -->
       <div class="mb-16 animate-fade-in">
         <div class="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 p-6 max-w-3xl mx-auto">
           <div class="text-center mb-4">
-            <h3 class="text-2xl font-bold text-gray-800 mb-2">Custom Category Search</h3>
-            <p class="text-gray-600">Search for any Wikimedia Commons category to analyze</p>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">Category of Campaign</h3>
+            <p class="text-gray-600">Search for any Wikimedia Commons category of a campaign to analyze</p>
           </div>
           
           <div class="relative">
@@ -84,7 +80,7 @@
                   @keydown.escape="hideSuggestions"
                   @focus="showSuggestions = customCategoryQuery.length >= 3"
                   type="text"
-                  placeholder="Start typing a category name (e.g., 'Category:Images from...')"
+                  placeholder="Type category name:"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wikimedia-blue focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
                 />
                 
@@ -159,25 +155,21 @@
                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
                   </svg>
-                  <span class="font-medium">Category on Commons:</span>
-                </div>
+                 
+                
                 <a 
                   :href="currentCommonsUrl" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   class="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline transition-colors duration-200"
                 >
-                  View on Commons →
+                  View Category on Wikimedia Commons →
                 </a>
+                </div>
               </div>
               <div class="mt-1 text-xs text-blue-600 font-mono break-all">
-                {{ currentCommonsUrl }}
+               URL :  {{ currentCommonsUrl }}
               </div>
-            </div>
-            
-            <!-- Search help text -->
-            <div class="mt-3 text-sm text-gray-500 text-center">
-              <p>Search for categories like "Images from Wiki Loves Monuments 2023" or browse suggestions below</p>
             </div>
           </div>
         </div>
@@ -275,13 +267,17 @@
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             </svg>
-            <span class="font-medium">Open Source</span>
+            <a href="https://wikitech.wikimedia.org/wiki/Portal:Toolforge" target="_blank">
+            <span class="font-medium">Wikimedia Toolforge</span>
+            </a>
           </div>
           <div class="flex items-center space-x-2 text-gray-600">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>
-            <span class="font-medium">Community Driven</span>
+            <a href="https://hay.toolforge.org/directory/" target="_blank">
+            <span class="font-medium">Tools Directory</span>
+            </a>
           </div>
           <div class="flex items-center space-x-2 text-gray-600">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -291,9 +287,9 @@
           </div>
         </div>
         <p class="text-gray-500 text-sm mb-2">
-          Powered by <span class="font-semibold text-wikimedia-blue">Wikimedia Commons</span> • 
-          Built with <span class="font-semibold text-wikimedia-green">Vue.js</span> & 
-          <span class="font-semibold text-wikimedia-purple">TailwindCSS</span>
+          Powered by <a href="https://commons.wikimedia.org/" target="_blank"></a><span class="font-semibold text-wikimedia-blue">Wikimedia Commons API</span> • 
+          Built with <a href="https://vuejs.org/" target="_blank"><span class="font-semibold text-wikimedia-green">Vue.js</span></a> & 
+        <a href="https://tailwindcss.com/" target="_blank"><span class="font-semibold text-wikimedia-purple">TailwindCSS</span></a>
         </p>
         <p class="text-gray-400 text-xs">
           Analyzing media contributions from the world's largest free media repository
