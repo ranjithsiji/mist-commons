@@ -39,7 +39,7 @@
       </div>
     </div>
     
-    <div ref="mapContainer" class="h-[500px] w-full rounded-lg border border-gray-300"></div>
+    <div ref="mapContainer" class="h-[500px] w-full rounded-lg border border-gray-300 overflow-hidden"></div>
   </div>
 </template>
 
@@ -82,12 +82,25 @@ const initMap = () => {
   const avgLat = validGeoData.reduce((sum, d) => sum + d.lat, 0) / validGeoData.length;
   const avgLon = validGeoData.reduce((sum, d) => sum + d.lon, 0) / validGeoData.length;
   
-  mapInstance = L.map(mapContainer.value).setView([avgLat, avgLon], 8);
+  mapInstance = L.map(mapContainer.value, {
+    zoomControl: true,
+    attributionControl: true
+  }).setView([avgLat, avgLon], 8);
   
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
+  // Borderless (no-label, minimal) basemap
+  // Using Carto light without labels and minimal borders
+  const cartoNoLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
     maxZoom: 19
   }).addTo(mapInstance);
+  
+  // Optional labels layer to toggle (kept off by default)
+  // const cartoLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+  //   attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  //   subdomains: 'abcd',
+  //   maxZoom: 19
+  // });
   
   // Create custom location pin marker icon
   const locationIcon = L.divIcon({
@@ -107,43 +120,21 @@ const initMap = () => {
   
   // Initialize marker cluster group with custom options
   markerClusterGroup = L.markerClusterGroup({
-    // Cluster customization options
-    chunkedLoading: true, // Better performance for large datasets
-    chunkInterval: 200, // ms between processing chunks
-    chunkDelay: 50, // ms delay before processing next chunk
-    
-    // Distance between markers before they get clustered
-    maxClusterRadius: 60, // pixels
-    
-    // Disable clustering at certain zoom levels
-    disableClusteringAtZoom: 15, // Disable clustering when zoomed in close
-    
-    // Animation settings
+    chunkedLoading: true,
+    chunkInterval: 200,
+    chunkDelay: 50,
+    maxClusterRadius: 60,
+    disableClusteringAtZoom: 15,
     animate: true,
     animateAddingMarkers: true,
-    
-    // Spiderfy settings (when markers are too close)
     spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
     zoomToBoundsOnClick: true,
-    
-    // Custom cluster icon creation
     iconCreateFunction: function(cluster) {
       const count = cluster.getChildCount();
-      let size = 'small';
       let colorClass = 'cluster-small';
-      
-      if (count < 10) {
-        size = 'small';
-        colorClass = 'cluster-small';
-      } else if (count < 50) {
-        size = 'medium';
-        colorClass = 'cluster-medium';
-      } else {
-        size = 'large';
-        colorClass = 'cluster-large';
-      }
-      
+      if (count >= 50) colorClass = 'cluster-large';
+      else if (count >= 10) colorClass = 'cluster-medium';
       return L.divIcon({
         html: `
           <div class="custom-cluster-marker ${colorClass}">
@@ -161,10 +152,8 @@ const initMap = () => {
   
   // Create markers and add them to appropriate groups
   individualMarkers = [];
-  
   validGeoData.forEach(item => {
     const marker = L.marker([item.lat, item.lon], { icon: locationIcon });
-    
     const popupContent = `
       <div style="min-width: 200px;">
         <img src="${item.thumbnail}" alt="${item.filename}" style="width: 100%; max-width: 300px; height: auto; border-radius: 4px; margin-bottom: 8px;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22150%22%3E%3Crect fill=%22%23ddd%22 width=%22200%22 height=%22150%22/%3E%3Ctext fill=%22%23999%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo thumbnail%3C/text%3E%3C/svg%3E'" />
@@ -174,31 +163,24 @@ const initMap = () => {
         <a href="${item.commonsUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #3B82F6; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: 500;">View on Commons</a>
       </div>
     `;
-    
     marker.bindPopup(popupContent, { maxWidth: 350 });
-    
-    // Add to both cluster group and individual markers array
     markerClusterGroup.addLayer(marker);
     individualMarkers.push(marker);
   });
   
-  // Add clusters to the map by default
   if (clusteringEnabled.value) {
     mapInstance.addLayer(markerClusterGroup);
   } else {
     individualMarkers.forEach(marker => marker.addTo(mapInstance));
   }
   
-  // Update cluster count
   updateClusterCount();
   
-  // Fit bounds to show all markers
   if (validGeoData.length > 0) {
     const bounds = L.latLngBounds(validGeoData.map(d => [d.lat, d.lon]));
-    mapInstance.fitBounds(bounds, { padding: [50, 50] });
+    mapInstance.fitBounds(bounds, { padding: [0, 0] });
   }
   
-  // Listen for cluster events to update count
   if (markerClusterGroup) {
     markerClusterGroup.on('clustermouseover', updateClusterCount);
     markerClusterGroup.on('clusterclick', updateClusterCount);
@@ -208,22 +190,12 @@ const initMap = () => {
 
 const updateClusterCount = () => {
   if (markerClusterGroup && clusteringEnabled.value) {
-    // Get visible clusters
-    const clusters = [];
-    markerClusterGroup.eachLayer(layer => {
-      if (layer instanceof L.MarkerCluster) {
-        clusters.push(layer);
-      }
-    });
-    
-    // Count clusters that are currently visible
     let visibleClusters = 0;
     mapInstance.eachLayer(layer => {
       if (layer._group === markerClusterGroup && layer._icon) {
         visibleClusters++;
       }
     });
-    
     clusterCount.value = visibleClusters;
   } else {
     clusterCount.value = individualMarkers.length;
@@ -232,131 +204,34 @@ const updateClusterCount = () => {
 
 const toggleClustering = () => {
   if (!mapInstance || !markerClusterGroup) return;
-  
   clusteringEnabled.value = !clusteringEnabled.value;
-  
   if (clusteringEnabled.value) {
-    // Remove individual markers and add cluster group
-    individualMarkers.forEach(marker => {
-      if (mapInstance.hasLayer(marker)) {
-        mapInstance.removeLayer(marker);
-      }
-    });
+    individualMarkers.forEach(marker => { if (mapInstance.hasLayer(marker)) mapInstance.removeLayer(marker); });
     mapInstance.addLayer(markerClusterGroup);
   } else {
-    // Remove cluster group and add individual markers
-    if (mapInstance.hasLayer(markerClusterGroup)) {
-      mapInstance.removeLayer(markerClusterGroup);
-    }
+    if (mapInstance.hasLayer(markerClusterGroup)) mapInstance.removeLayer(markerClusterGroup);
     individualMarkers.forEach(marker => marker.addTo(mapInstance));
   }
-  
   updateClusterCount();
 };
 
-onMounted(() => {
-  if (props.geoData.length > 0) {
-    initMap();
-  }
-});
-
-watch(() => props.geoData, (newData) => {
-  if (newData.length > 0) {
-    initMap();
-  }
-}, { deep: true });
-
-onBeforeUnmount(() => {
-  if (mapInstance) {
-    mapInstance.remove();
-    mapInstance = null;
-  }
-  markerClusterGroup = null;
-  individualMarkers = [];
-});
+onMounted(() => { if (props.geoData.length > 0) { initMap(); } });
+watch(() => props.geoData, (newData) => { if (newData.length > 0) { initMap(); } }, { deep: true });
+onBeforeUnmount(() => { if (mapInstance) { mapInstance.remove(); mapInstance = null; } markerClusterGroup = null; individualMarkers = []; });
 </script>
 
 <style scoped>
-/* Custom cluster marker styles */
-:deep(.custom-cluster-container) {
-  background: transparent !important;
-  border: none !important;
-}
-
-:deep(.custom-cluster-marker) {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: white;
-  text-align: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  border: 3px solid white;
-  transition: all 0.2s ease;
-}
-
-:deep(.custom-cluster-marker:hover) {
-  transform: scale(1.1);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-}
-
-:deep(.cluster-small) {
-  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
-}
-
-:deep(.cluster-medium) {
-  background: linear-gradient(135deg, #F59E0B, #D97706);
-}
-
-:deep(.cluster-large) {
-  background: linear-gradient(135deg, #EF4444, #DC2626);
-}
-
-:deep(.cluster-inner) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-
-:deep(.cluster-count) {
-  font-size: 14px;
-  font-weight: 700;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-/* Custom location marker styles */
-:deep(.custom-location-marker) {
-  background: transparent !important;
-  border: none !important;
-}
-
-/* Ensure Leaflet popup z-index is high enough */
-:deep(.leaflet-popup) {
-  z-index: 1000;
-}
-
-/* Custom marker cluster CSS overrides */
-:deep(.marker-cluster) {
-  background-clip: padding-box;
-  border-radius: 20px;
-}
-
-:deep(.marker-cluster div) {
-  width: 30px;
-  height: 30px;
-  margin-left: 5px;
-  margin-top: 5px;
-  text-align: center;
-  border-radius: 15px;
-  font: 12px "Helvetica Neue", Arial, Helvetica, sans-serif;
-}
-
-:deep(.marker-cluster span) {
-  line-height: 30px;
-}
+:deep(.custom-cluster-container) { background: transparent !important; border: none !important; }
+:deep(.custom-cluster-marker) { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; text-align: center; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); border: 3px solid white; transition: all 0.2s ease; }
+:deep(.custom-cluster-marker:hover) { transform: scale(1.1); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3); }
+:deep(.cluster-small) { background: linear-gradient(135deg, #3B82F6, #1D4ED8); }
+:deep(.cluster-medium) { background: linear-gradient(135deg, #F59E0B, #D97706); }
+:deep(.cluster-large) { background: linear-gradient(135deg, #EF4444, #DC2626); }
+:deep(.cluster-inner) { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+:deep(.cluster-count) { font-size: 14px; font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
+:deep(.custom-location-marker) { background: transparent !important; border: none !important; }
+:deep(.leaflet-popup) { z-index: 1000; }
+:deep(.marker-cluster) { background-clip: padding-box; border-radius: 20px; }
+:deep(.marker-cluster div) { width: 30px; height: 30px; margin-left: 5px; margin-top: 5px; text-align: center; border-radius: 15px; font: 12px "Helvetica Neue", Arial, Helvetica, sans-serif; }
+:deep(.marker-cluster span) { line-height: 30px; }
 </style>
