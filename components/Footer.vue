@@ -7,23 +7,28 @@
             <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
           </div>
           <div>
-            <p class="text-sm font-semibold text-gray-900">Commons Analytics</p>
-            <p class="text-xs text-gray-500">Wikimedia Commons Dashboard</p>
+            <p class="text-sm font-semibold text-gray-900">MIST by <a href="https://w.wiki/tN" target="_blank">Ranjithsiji</a></p>
+            <p class="text-xs text-gray-500">Media Statistics and Analytics Dashboard for Wikimedia Commons Campaigns</p>
           </div>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
           <a href="#" class="text-gray-600 hover:text-wikimedia-blue">About</a>
           <a href="#" class="text-gray-600 hover:text-wikimedia-blue">Documentation</a>
-          <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer" class="text-gray-600 hover:text-wikimedia-blue">Commons</a>
+          <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer" class="text-gray-600 hover:text-wikimedia-blue">Wikimedia Commons</a>
           <a href="https://github.com/ranjithsiji/mist-commons" target="_blank" rel="noopener noreferrer" class="text-gray-600 hover:text-wikimedia-blue">GitHub</a>
         </div>
       </div>
       <div class="mt-6 pt-6 border-t border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <p class="text-xs text-gray-500">© {{ new Date().getFullYear() }} Commons Analytics. Built with Vue.js and TailwindCSS.</p>
+        <p class="text-xs text-gray-500">© {{ new Date().getFullYear() }} MIST. Built with Vue.js and TailwindCSS.</p>
         <div class="flex items-center gap-4 text-xs text-gray-500">
-          <span>Source Code</span>
-          <span>License</span>
-          <span>Global Impact</span>
+          <span>
+          <a href="https://gitlab.wikimedia.org/toolforge-repos/mist-tools" target="_blank">
+            Source Code
+          </a>
+          </span>
+          
+          <span><a href="https://github.com/ranjithsiji/mist-commons/blob/main/LICENSE" target="_blank">License</a></span>
+          <span><a href="https://w.wiki/t9" target="_blank">Wikimedians of Kerala User Group</a></span>
         </div>
       </div>
     </div>

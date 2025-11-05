@@ -20,9 +20,9 @@
           <!-- Top Navigation Menu -->
           <nav class="hidden md:flex items-center space-x-8">
             <a href="#" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Home</a>
-            <a href="#" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">About</a>
-            <a href="#" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Documentation</a>
-            <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Commons</a>
+            <a href="https://w.wiki/t9" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Wikimedians of Kerala</a>
+            <a href="https://gitlab.wikimedia.org/toolforge-repos/mist-tool" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Gitlab</a>
+            <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Wikimedia Commons</a>
           </nav>
           
           <!-- Mobile menu button -->
@@ -40,9 +40,9 @@
         <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-200 py-4">
           <nav class="flex flex-col space-y-2">
             <a href="#" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Home</a>
-            <a href="#" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">About</a>
-            <a href="#" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Documentation</a>
-            <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Commons</a>
+            <a href="https://w.wiki/t9" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Wikimedians of Kerala</a>
+            <a href="https://gitlab.wikimedia.org/toolforge-repos/mist-tool" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Gitlab</a>
+            <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Wikimedia Commons</a>
           </nav>
         </div>
       </div>
@@ -283,7 +283,9 @@
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
             </svg>
-            <span class="font-medium">Global Impact</span>
+            <a href="https://w.wiki/t9" target="_blank">
+            <span class="font-medium">Wikimedians of Kerala</span>
+            </a>
           </div>
         </div>
         <p class="text-gray-500 text-sm mb-2">
