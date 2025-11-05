@@ -24,7 +24,7 @@
       "color1": "#10B981",
       "color2": "#059669",
       "startDate": "2025-06-01",
-      "endDate": "2025-06-30"
+      "endDate": "2025-07-30"
     },
     {
       "id": "wlf-india-2025",
@@ -37,7 +37,7 @@
       "color1": "#3B82F6",
       "color2": "#1D4ED8",
       "startDate": "2025-02-01",
-      "endDate": "2025-02-28"
+      "endDate": "2025-03-31"
     },
     {
       "id": "wlb-india-2024",
@@ -49,8 +49,8 @@
       "year": "2024",
       "color1": "#3B82F6",
       "color2": "#1D4ED8",
-      "startDate": "2024-09-01",
-      "endDate": "2024-09-30"
+      "startDate": "2024-12-01",
+      "endDate": "2024-12-31"
     },
     {
       "id": "wlm-india-2023",
