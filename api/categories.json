@@ -6,7 +6,7 @@
       "slug": "wiki-loves-birds-india-2024",
       "description": "Photography contest celebrating Indian bird diversity",
       "categoryName": "Images_from_Wiki_Loves_Birds_India_2024_(maintenance-earth)",
-      "icon": "🦅",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/House_sparrow04.jpg/256px-House_sparrow04.jpg",
       "year": "2024",
       "color1": "#3B82F6",
       "color2": "#1D4ED8"
@@ -17,7 +17,7 @@
       "slug": "wiki-loves-monuments-india-2023",
       "description": "Documenting India's architectural heritage",
       "categoryName": "Images_from_Wiki_Loves_Monuments_2023_in_India",
-      "icon": "🏛️",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Taj_Mahal_in_March_2004.jpg/256px-Taj_Mahal_in_March_2004.jpg",
       "year": "2023",
       "color1": "#F59E0B",
       "color2": "#D97706"
@@ -28,7 +28,7 @@
       "slug": "wiki-loves-earth-india-2023",
       "description": "Capturing natural heritage and protected areas",
       "categoryName": "Images_from_Wiki_Loves_Earth_2023_in_India",
-      "icon": "🌍",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Bandhavgarh_Tiger.jpg/256px-Bandhavgarh_Tiger.jpg",
       "year": "2023",
       "color1": "#10B981",
       "color2": "#059669"
@@ -39,7 +39,7 @@
       "slug": "wiki-loves-africa-2023",
       "description": "Celebrating African culture and heritage",
       "categoryName": "Images_from_Wiki_Loves_Africa_2023",
-      "icon": "🌍",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Lion_waiting_in_Namibia.jpg/256px-Lion_waiting_in_Namibia.jpg",
       "year": "2023",
       "color1": "#EF4444",
       "color2": "#DC2626"
@@ -50,7 +50,7 @@
       "slug": "wiki-loves-folklore-2023",
       "description": "Traditional cultural expressions and practices",
       "categoryName": "Images_from_Wiki_Loves_Folklore_2023",
-      "icon": "🎭",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Kathakali_Performance_-_Theyyam_-_Kerala.jpg/256px-Kathakali_Performance_-_Theyyam_-_Kerala.jpg",
       "year": "2023",
       "color1": "#8B5CF6",
       "color2": "#7C3AED"
@@ -61,7 +61,7 @@
       "slug": "cee-spring-2022",
       "description": "Central and Eastern European photo contest",
       "categoryName": "Images_from_CEE_Spring_2022",
-      "icon": "🌸",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Cherry_Blossoms_-_Washington%2C_D.C.jpg/256px-Cherry_Blossoms_-_Washington%2C_D.C.jpg",
       "year": "2022",
       "color1": "#EC4899",
       "color2": "#DB2777"
