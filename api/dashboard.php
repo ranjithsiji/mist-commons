@@ -97,7 +97,7 @@ function generateMockData($category) {
 try {
     $category = isset($_GET['category']) ? trim($_GET['category']) : '';
     if (empty($category)) { http_response_code(400); echo json_encode(['success'=>false,'error'=>'Category parameter is required. Please provide ?category=CategoryName','timestamp'=>date('c')]); exit; }
-    if (!preg_match('/^[a-zA-Z0-9_\-().\s\/]+$/', $category) || strlen($category) > 255) { http_response_code(400); echo json_encode(['success'=>false,'error'=>'Invalid category name. Only alphanumeric characters, spaces, hyphens, underscores, periods, forward slashes and parentheses are allowed. Maximum 255 characters.','timestamp'=>date('c')]); exit; }
+    if (!preg_match('/^[a-zA-Z0-9_\-().,\\s\\/]+$/', $category) || strlen($category) > 255) { http_response_code(400); echo json_encode(['success'=>false,'error'=>'Invalid category name. Only alphanumeric characters, spaces, hyphens, underscores, periods, forward slashes and parentheses are allowed. Maximum 255 characters.','timestamp'=>date('c')]); exit; }
     $forceRefresh = isset($_GET['refresh']) && $_GET['refresh'] === '1';
     // Date filters (YYYY-MM-DD)
     $startDate = isset($_GET['start']) ? $_GET['start'] : null;
