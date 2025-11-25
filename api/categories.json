@@ -1,6 +1,19 @@
 {
   "categories": [
     {
+      "id": "wlb-india-2025",
+      "name": "Wiki Loves Birds India 2025",
+      "slug": "wiki-loves-birds-india-2025",
+      "description": "Photography contest celebrating Indian bird diversity",
+      "categoryName": "Images_from_Wiki_Loves_Birds_India_2025",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Wiki_Loves_Birds_India_Logo_commons.svg/250px-Wiki_Loves_Birds_India_Logo_commons.svg.png",
+      "year": "2025",
+      "color1": "#3B82F6",
+      "color2": "#1D4ED8",
+      "startDate": "2025-11-12",
+      "endDate": "2026-01-12"
+    },
+    {
       "id": "wlsc-2025",
       "name": "Wiki Loves Schools 2025",
       "slug": "wiki-loves-schools-2025",
