@@ -152,13 +152,14 @@ try {
         echo json_encode(['success' => false, 'error' => 'Category parameter is required. Please provide ?category=CategoryName', 'timestamp' => date('c')]);
         exit;
     }
-    // Allow Unicode letters and combining marks: Commons categories are
-    // frequently non-Latin, and Indic scripts write vowel signs as marks
-    // (\p{M}) rather than letters. The query itself is parameterised, so this
-    // check is about rejecting nonsense input, not about escaping.
-    if (!preg_match('/^[\p{L}\p{M}\p{N}_\-().,\s\/]+$/u', $category) || strlen($category) > 255) {
+    // Accept the characters Commons category titles actually use: Unicode
+    // letters and combining marks (Indic scripts write vowel signs as marks,
+    // not letters), plus colons for campaign categories such as
+    // "Uploaded via Campaign:vaz-2026". The query is parameterised, so this
+    // check rejects nonsense input rather than escaping anything.
+    if (!preg_match('/^[\p{L}\p{M}\p{N}_\-().,:\'!\s\/]+$/u', $category) || mb_strlen($category) > 255) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid category name. Only alphanumeric characters, spaces, hyphens, underscores, periods, forward slashes and parentheses are allowed. Maximum 255 characters.', 'timestamp' => date('c')]);
+        echo json_encode(['success' => false, 'error' => 'Invalid category name. Letters, numbers, spaces and the characters _-().,:\'!/ are allowed. Maximum 255 characters.', 'timestamp' => date('c')]);
         exit;
     }
 

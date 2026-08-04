@@ -150,9 +150,14 @@ try {
         echo json_encode(['success' => false, 'error' => 'Category parameter is required. Please provide ?category=CategoryName', 'timestamp' => date('c')]);
         exit;
     }
-    if (!preg_match('/^[a-zA-Z0-9_\-().,\\s\\/]+$/', $category) || strlen($category) > 255) {
+    // Accept the characters Commons category titles actually use: Unicode
+    // letters and combining marks (Indic scripts write vowel signs as marks,
+    // not letters), plus colons for campaign categories such as
+    // "Uploaded via Campaign:vaz-2026". The query is parameterised, so this
+    // check rejects nonsense input rather than escaping anything.
+    if (!preg_match('/^[\p{L}\p{M}\p{N}_\-().,:\'!\s\/]+$/u', $category) || mb_strlen($category) > 255) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Invalid category name. Only alphanumeric characters, spaces, hyphens, underscores, periods, forward slashes and parentheses are allowed. Maximum 255 characters.', 'timestamp' => date('c')]);
+        echo json_encode(['success' => false, 'error' => 'Invalid category name. Letters, numbers, spaces and the characters _-().,:\'!/ are allowed. Maximum 255 characters.', 'timestamp' => date('c')]);
         exit;
     }
     $forceRefresh = isset($_GET['refresh']) && $_GET['refresh'] === '1';
