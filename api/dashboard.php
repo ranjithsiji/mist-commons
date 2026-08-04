@@ -21,6 +21,17 @@ require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/commons.php';
 $cacheDir = __DIR__ . '/../cache';
 $cacheTime = 3600;
+
+// Query tuning lives in config.php so it can be adjusted per deployment.
+$appConfig = @include __DIR__ . '/config.php';
+$queryConfig = is_array($appConfig) && isset($appConfig['query']) ? $appConfig['query'] : [];
+
+// Rows fetched per statement when reading a category.
+define('CATEGORY_BATCH_SIZE', max(100, (int) ($queryConfig['batch_size'] ?? 10000)));
+
+// Above this many files a category cannot be assembled into a single response.
+// Also the backstop when Commons is unreachable and its count is unavailable.
+define('MAX_CATEGORY_FILES', max(CATEGORY_BATCH_SIZE, (int) ($queryConfig['max_files'] ?? 120000)));
 function isCacheValid($f, $t)
 {
     return file_exists($f) && (time() - filemtime($f)) < $t;
@@ -37,67 +48,199 @@ function saveCacheData($f, $d)
     file_put_contents($f, json_encode($d));
 }
 
+/**
+ * Reduce an img_metadata blob to the few fields the dashboard actually uses.
+ *
+ * Full EXIF runs to several KB per file, so shipping it verbatim produces a
+ * response of well over a hundred megabytes for a large campaign category —
+ * enough to exhaust PHP's memory limit before the response is even sent.
+ * Only the coordinates and camera model are ever read by the client.
+ *
+ * MediaWiki writes this column as JSON on current wikis and as a PHP
+ * serialize() string on older rows, so both are accepted.
+ */
+function compactImageMetadata($blob)
+{
+    if (!is_string($blob) || $blob === '' || $blob === '0' || $blob === '{}') {
+        return '{}';
+    }
+
+    $data = null;
+    if ($blob[0] === '{' || $blob[0] === '[') {
+        $decoded = json_decode($blob, true);
+        if (is_array($decoded)) {
+            // Some rows nest the fields under "data", others are already flat
+            $data = isset($decoded['data']) && is_array($decoded['data']) ? $decoded['data'] : $decoded;
+        }
+    } else {
+        // Legacy PHP-serialised metadata. Guard against objects in the payload.
+        $decoded = @unserialize($blob, ['allowed_classes' => false]);
+        if (is_array($decoded)) {
+            $data = isset($decoded['data']) && is_array($decoded['data']) ? $decoded['data'] : $decoded;
+        }
+    }
+
+    if (!is_array($data)) {
+        // The blob is fetched truncated, so a large EXIF payload can arrive as
+        // invalid JSON. Pull the handful of fields we need straight out of the
+        // text rather than discarding the row's metadata entirely.
+        return recoverTruncatedMetadata($blob);
+    }
+
+    $kept = [];
+    foreach (['GPSLatitude', 'GPSLongitude', 'Model'] as $field) {
+        if (!isset($data[$field])) {
+            continue;
+        }
+        $value = $data[$field];
+        // EXIF values are occasionally arrays or rationals; keep only scalars
+        if (is_scalar($value) && $value !== '') {
+            $kept[$field] = $value;
+        }
+    }
+
+    return $kept ? json_encode(['data' => $kept], JSON_UNESCAPED_UNICODE) : '{}';
+}
+
+/**
+ * Salvage coordinates and camera model from a blob that could not be decoded,
+ * typically because it was cut off by the LEFT() in the query.
+ */
+function recoverTruncatedMetadata($blob)
+{
+    $kept = [];
+
+    foreach (['GPSLatitude', 'GPSLongitude'] as $field) {
+        // JSON: "GPSLatitude":10.5   |   serialized: "GPSLatitude";d:10.5;
+        if (preg_match('/"' . $field . '"\s*[:;]\s*(?:d:)?"?(-?\d+(?:\.\d+)?)"?/', $blob, $m)) {
+            $kept[$field] = (float) $m[1];
+        }
+    }
+
+    // JSON: "Model":"Canon"   |   serialized: "Model";s:5:"Canon";
+    if (preg_match('/"Model"\s*[:;]\s*(?:s:\d+:)?"((?:[^"\\\\]|\\\\.)*)"/', $blob, $m)) {
+        $model = stripcslashes($m[1]);
+        if ($model !== '') {
+            $kept['Model'] = $model;
+        }
+    }
+
+    return $kept ? json_encode(['data' => $kept], JSON_UNESCAPED_UNICODE) : '{}';
+}
+
 function queryCommonsDatabase($category, $startDate = null, $endDate = null)
 {
     try {
         $startTime = microtime(true);
         $db = Database::getInstance();
-        $params = [$category];
+
         $dateFilter = '';
+        $dateParams = [];
         // img.img_timestamp is in MediaWiki format YYYYMMDDHHMMSS
         if ($startDate) {
             $dateFilter .= " AND img.img_timestamp >= ?";
-            $params[] = str_replace(['-', 'T', ':'], '', $startDate . '000000');
+            $dateParams[] = str_replace(['-', 'T', ':'], '', $startDate . '000000');
         }
         if ($endDate) {
             $dateFilter .= " AND img.img_timestamp <= ?";
-            $params[] = str_replace(['-', 'T', ':'], '', $endDate . '235959');
+            $dateParams[] = str_replace(['-', 'T', ':'], '', $endDate . '235959');
         }
-        $sql = "
-            SELECT 
+
+        // Fetch in batches rather than in one statement. mysqli buffers a whole
+        // result set in memory, so a 46k-file category would otherwise hold
+        // every row — metadata blobs included — before a single one is reduced.
+        // Batching keeps peak memory flat no matter how large the category is,
+        // and keeps each statement short enough to avoid replica timeouts.
+        //
+        // Paging is by cl_from rather than OFFSET: MariaDB re-scans and discards
+        // every skipped row for a large OFFSET, so the last batches of a big
+        // category would cost far more than the first.
+        $sqlTemplate = "
+            SELECT
                 cl.cl_from,
                 lt.lt_title as cl_to,
                 img.img_name as filename,
                 DATE_FORMAT(img.img_timestamp, '%Y%m%d') as imgdate,
                 img.img_timestamp,
                 img.img_size,
-                COALESCE(img.img_metadata, '') as img_metadata,
+                -- Only the head of the blob is needed: the fields the
+                -- dashboard reads sit near the front, and transferring full
+                -- EXIF for every file is what exhausts memory on large
+                -- categories. Truncated rows are parsed leniently below.
+                LEFT(COALESCE(img.img_metadata, ''), 4096) as img_metadata,
                 COALESCE(actor.actor_name, 'Unknown') as uploader
-            FROM 
+            FROM
                 categorylinks cl
-            INNER JOIN 
+            INNER JOIN
                 linktarget lt ON cl.cl_target_id = lt.lt_id
-            INNER JOIN 
+            INNER JOIN
                 page ON cl.cl_from = page.page_id
-            INNER JOIN 
+            INNER JOIN
                 image img ON page.page_title = img.img_name
             LEFT JOIN
                 actor ON img.img_actor = actor.actor_id
-            WHERE 
+            WHERE
                 lt.lt_title = ?
                 AND lt.lt_namespace = 14
                 AND page.page_namespace = 6
+                AND cl.cl_from > ?
                 {$dateFilter}
-            ORDER BY 
-                img.img_timestamp DESC
-            LIMIT 100000
+            ORDER BY
+                cl.cl_from ASC
+            LIMIT " . CATEGORY_BATCH_SIZE . "
         ";
-        $results = $db->executeQuery($sql, $params);
+
         $rows = [];
-        foreach ($results as $row) {
-            $rows[] = [
-                (int) $row['cl_from'],
-                $row['cl_to'],
-                $row['filename'],
-                $row['imgdate'],
-                $row['img_timestamp'],
-                (int) $row['img_size'],
-                $row['img_metadata'] ?: '{}',
-                $row['uploader']
-            ];
+        $lastId = 0;
+        $batches = 0;
+
+        while (count($rows) < MAX_CATEGORY_FILES) {
+            $params = array_merge([$category, $lastId], $dateParams);
+            $results = $db->executeQuery($sqlTemplate, $params);
+            $batches++;
+
+            if (empty($results)) {
+                break;
+            }
+
+            // Never exceed the cap: the final batch may run past it
+            $remaining = MAX_CATEGORY_FILES - count($rows);
+            if (count($results) > $remaining) {
+                $results = array_slice($results, 0, $remaining);
+            }
+
+            foreach ($results as $row) {
+                $lastId = (int) $row['cl_from'];
+                $rows[] = [
+                    $lastId,
+                    $row['cl_to'],
+                    $row['filename'],
+                    $row['imgdate'],
+                    $row['img_timestamp'],
+                    (int) $row['img_size'],
+                    compactImageMetadata($row['img_metadata']),
+                    $row['uploader']
+                ];
+            }
+
+            $fetched = count($results);
+            // Release the batch before requesting the next one
+            unset($results);
+
+            // A short batch means the category is exhausted
+            if ($fetched < CATEGORY_BATCH_SIZE) {
+                break;
+            }
         }
+
+        // Rows are paged by cl_from for efficiency, but the dashboard expects
+        // them newest first, as the single-statement query used to return them.
+        usort($rows, function ($a, $b) {
+            return strcmp((string) $b[4], (string) $a[4]);
+        });
+
         $executionTime = round((microtime(true) - $startTime) * 1000, 2);
-        return ['success' => true, 'rows' => $rows, 'count' => count($rows), 'timestamp' => date('c'), 'category' => $category, 'cached' => false, 'query_time_ms' => $executionTime];
+        return ['success' => true, 'rows' => $rows, 'count' => count($rows), 'timestamp' => date('c'), 'category' => $category, 'cached' => false, 'query_time_ms' => $executionTime, 'batches' => $batches];
     } catch (Exception $e) {
         error_log('Database query failed for category ' . $category . ': ' . $e->getMessage());
         return ['success' => false, 'error' => 'Database query failed: ' . $e->getMessage(), 'category' => $category, 'timestamp' => date('c')];
@@ -206,6 +349,23 @@ try {
             ], JSON_UNESCAPED_UNICODE);
             exit;
         }
+
+        // Commons has already told us how big this category is. Refuse the
+        // ones that cannot be assembled into a response, with a message that
+        // says so, rather than dying halfway through with an empty 500.
+        if ($check['ok'] && $check['files'] > MAX_CATEGORY_FILES) {
+            http_response_code(413);
+            echo json_encode([
+                'success' => false,
+                'error' => 'This category has ' . number_format($check['files']) . ' files, which is too many to analyse in one request (the limit is ' . number_format(MAX_CATEGORY_FILES) . '). Use the start and end date parameters to analyse a shorter period.',
+                'category' => $category,
+                'file_count' => $check['files'],
+                'limit' => MAX_CATEGORY_FILES,
+                'timestamp' => date('c')
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
         $data = queryCommonsDatabase($category, $startDate, $endDate);
     }
 

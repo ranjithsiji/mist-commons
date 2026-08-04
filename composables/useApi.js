@@ -83,22 +83,26 @@ export function useApi() {
 
       if (!response.ok || !jsonData || !jsonData.success) {
         const err = new Error(jsonData?.error || `HTTP ${response.status}: ${response.statusText}`);
-        // Commons says the category does not exist: a dead end, not a fault
-        // the user can retry their way out of.
+        // Commons says the category does not exist, or it is too large to
+        // analyse: dead ends, not faults the user can retry their way out of.
         err.categoryMissing = response.status === 404 || jsonData?.category_exists === false;
+        err.categoryTooLarge = response.status === 413;
         throw err;
       }
       return jsonData;
     } catch (err) {
-      const errorMessage = err.categoryMissing
+      // These carry a message written for the user; don't bury it in a prefix
+      const isExpected = err.categoryMissing || err.categoryTooLarge;
+      const errorMessage = isExpected
         ? err.message
         : `Failed to load dashboard data: ${err.message}`;
       error.value = errorMessage;
-      if (import.meta.env.DEV && !err.categoryMissing) {
+      if (import.meta.env.DEV && !isExpected) {
         return getMockDashboardData(categoryName);
       }
       const wrapped = new Error(errorMessage);
       wrapped.categoryMissing = !!err.categoryMissing;
+      wrapped.categoryTooLarge = !!err.categoryTooLarge;
       throw wrapped;
     } finally {
       loading.value = false;

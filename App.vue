@@ -134,7 +134,7 @@
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
             </svg>
             <div>
-              <h3 class="font-medium">{{ categoryMissing ? 'Category Not Found' : 'Error Loading Data' }}</h3>
+              <h3 class="font-medium">{{ errorHeading }}</h3>
               <p class="text-sm mt-1">{{ error }}</p>
               <div v-if="categoryMissing" class="text-sm mt-2">
                 <p>Check the spelling, and note that category names are case sensitive.</p>
@@ -285,6 +285,13 @@ const newUsersOpen = ref(false);
 // Commons confirmed the category does not exist, as opposed to a transient
 // failure the user could retry.
 const categoryMissing = ref(false);
+const categoryTooLarge = ref(false);
+
+const errorHeading = computed(() => {
+  if (categoryMissing.value) return 'Category Not Found';
+  if (categoryTooLarge.value) return 'Category Too Large';
+  return 'Error Loading Data';
+});
 const contributorFilesOpen = ref(false);
 const contributorFilesUser = ref('');
 
@@ -406,6 +413,7 @@ const loadFromURL = () => {
 
 const fetchData = async (categoryName, isCustom = false, dateRange = {}) => {
   categoryMissing.value = false;
+  categoryTooLarge.value = false;
   try {
     const jsonData = await fetchDashboardData(categoryName, isCustom, dateRange);
     const processed = processData(jsonData);
@@ -414,6 +422,7 @@ const fetchData = async (categoryName, isCustom = false, dateRange = {}) => {
     geoData.value = processed.geoData;
   } catch (err) {
     categoryMissing.value = !!err.categoryMissing;
+    categoryTooLarge.value = !!err.categoryTooLarge;
     // Don't leave the previous category's dashboard on screen under an error
     dashboardData.value = null;
     stats.value = null;
