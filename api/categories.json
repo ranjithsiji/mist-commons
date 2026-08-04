@@ -1,6 +1,19 @@
 {
   "categories": [
     {
+      "id": "wle-india-2026",
+      "name": "Wiki Loves Earth India 2026",
+      "slug": "wiki-loves-earth-india-2026",
+      "description": "Capturing natural heritage including national parks, wildlife sanctuaries, and protected areas across India.",
+      "categoryName": "Images_from_Wiki_Loves_Earth_2026_in_India",
+      "icon": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Wiki_Loves_Earth_India.svg/250px-Wiki_Loves_Earth_India.svg.png",
+      "year": "2026",
+      "color1": "#10B981",
+      "color2": "#059669",
+      "startDate": "2026-05-30",
+      "endDate": "2026-08-01"
+    },
+    {
       "id": "wlb-india-2025",
       "name": "Wiki Loves Birds India 2025",
       "slug": "wiki-loves-birds-india-2025",
@@ -11,7 +24,7 @@
       "color1": "#3B82F6",
       "color2": "#1D4ED8",
       "startDate": "2025-11-12",
-      "endDate": "2026-01-12"
+      "endDate": "2026-05-30"
     },
     {
       "id": "wlsc-2025",
