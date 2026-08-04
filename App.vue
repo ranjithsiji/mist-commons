@@ -205,7 +205,10 @@
 
           <!-- Contributors Section -->
           <div id="contributors" class="scroll-mt-20">
-            <ContributorsTable :user-contributions="dashboardData.userContributions" />
+            <ContributorsTable
+              :user-contributions="dashboardData.userContributions"
+              @show-files="showContributorFiles"
+            />
           </div>
 
           <!-- Files by Contributor Section -->
@@ -218,6 +221,16 @@
         </div>
       </main>
     </div>
+
+    <!-- Files for a contributor picked from the contributors table -->
+    <FileGalleryModal
+      :open="contributorFilesOpen"
+      :title="`Files by ${contributorFilesUser}`"
+      :subtitle="contributorFilesSubtitle"
+      :files="contributorFiles"
+      :show-user="false"
+      @close="contributorFilesOpen = false"
+    />
 
     <!-- New Contributors popup (loads on demand) -->
     <NewUsersModal
@@ -241,6 +254,7 @@ import DashboardCharts from './components/DashboardCharts.vue';
 import DailyUploads from './components/DailyUploads.vue';
 import UserFiles from './components/UserFiles.vue';
 import ContributorsTable from './components/ContributorsTable.vue';
+import FileGalleryModal from './components/FileGalleryModal.vue';
 import NewUsersModal from './components/NewUsersModal.vue';
 import Footer from './components/Footer.vue';
 import { useApi } from './composables/useApi';
@@ -259,6 +273,34 @@ const mobileMenuOpen = ref(false);
 const categoryValidation = ref(null);
 const urlCopied = ref(false);
 const newUsersOpen = ref(false);
+const contributorFilesOpen = ref(false);
+const contributorFilesUser = ref('');
+
+// Files for the contributor whose file count was clicked in the table
+const contributorFiles = computed(() =>
+  dashboardData.value?.filesByUser?.[contributorFilesUser.value] || []
+);
+
+const contributorFilesSubtitle = computed(() => {
+  const files = contributorFiles.value;
+  if (!files.length) return '';
+  const activeDays = new Set(files.map(f => f.date).filter(Boolean)).size;
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+  return `${activeDays} active day${activeDays === 1 ? '' : 's'} · ${formatBytes(totalSize)}`;
+});
+
+const formatBytes = (bytes) => {
+  if (!bytes) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+};
+
+const showContributorFiles = (username) => {
+  contributorFilesUser.value = username;
+  contributorFilesOpen.value = true;
+};
 
 const normalizeCategoryName = (name) => name.replace(/^Category:/i, '').replace(/\s+/g, '_');
 const getDisplayName = (name) => name.replace(/^Category:/i, '').replace(/_/g, ' ');
@@ -333,6 +375,7 @@ const backToHome = () => {
   mobileMenuOpen.value = false;
   urlCopied.value = false;
   newUsersOpen.value = false;
+  contributorFilesOpen.value = false;
   updateURL('');
 };
 

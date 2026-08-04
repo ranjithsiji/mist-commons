@@ -26,7 +26,10 @@
 
     <!-- Contributors Anchor -->
     <div id="contributors" class="scroll-mt-20">
-      <ContributorsTable :user-contributions="dashboardData.userContributions" />
+      <ContributorsTable
+        :user-contributions="dashboardData.userContributions"
+        @show-files="$emit('show-files', $event)"
+      />
     </div>
 
     <!-- Files by Contributor Anchor -->
@@ -52,4 +55,6 @@ const props = defineProps({
   stats: { type: Object, required: true },
   geoData: { type: Array, required: true }
 });
+
+defineEmits(['show-files']);
 </script>

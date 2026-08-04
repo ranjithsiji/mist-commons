@@ -96,63 +96,39 @@
     </div>
 
     <template v-else>
-      <!-- Masonry grid; thumbnails keep their aspect ratio like the heritage tool -->
+      <!-- Only a short preview inline; the full day opens in a popup -->
       <div class="gap-4 columns-2 sm:columns-3 lg:columns-4 xl:columns-5">
-        <figure
-          v-for="file in visibleFiles"
-          :key="file.filename"
-          class="group mb-4 break-inside-avoid border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-200"
-        >
-          <a :href="file.commonsUrl" target="_blank" rel="noopener noreferrer" class="block bg-gray-100">
-            <img
-              :src="file.thumbnail"
-              :alt="file.title"
-              loading="lazy"
-              class="w-full group-hover:opacity-90 transition-opacity duration-200"
-              @error="onImageError"
-            />
-          </a>
-          <figcaption class="p-3">
-            <a
-              :href="file.commonsUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="block text-sm font-medium text-gray-900 hover:text-wikimedia-blue truncate"
-              :title="file.title"
-            >
-              {{ file.title }}
-            </a>
-            <div class="mt-1 flex items-center justify-between text-xs text-gray-500">
-              <a
-                :href="userPageUrl(file.user)"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="truncate hover:text-wikimedia-blue"
-                :title="file.user"
-              >
-                {{ file.user }}
-              </a>
-              <span class="flex-shrink-0 ml-2">{{ file.time }}</span>
-            </div>
-            <p class="mt-1 text-xs text-gray-400">{{ file.sizeMB }} MB</p>
-          </figcaption>
-        </figure>
+        <FileCard v-for="file in previewFiles" :key="file.filename" :file="file" />
       </div>
 
       <div v-if="hasMore" class="mt-6 text-center">
         <button
-          @click="visibleCount += PAGE_SIZE"
-          class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+          @click="galleryOpen = true"
+          class="inline-flex items-center px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:shadow transition-all duration-200"
         >
-          Show more ({{ dayFiles.length - visibleFiles.length }} remaining)
+          <svg class="w-4 h-4 mr-2 text-wikimedia-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          View all {{ dayFiles.length }} files
         </button>
       </div>
     </template>
+
+    <!-- Full day gallery -->
+    <FileGalleryModal
+      :open="galleryOpen"
+      :title="`Uploads on ${selectedDate}`"
+      :subtitle="gallerySubtitle"
+      :files="dayFiles"
+      @close="galleryOpen = false"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import FileCard from './FileCard.vue';
+import FileGalleryModal from './FileGalleryModal.vue';
 
 const props = defineProps({
   dailyUploads: { type: Array, required: true },
@@ -160,10 +136,11 @@ const props = defineProps({
   totalFiles: { type: Number, default: 0 }
 });
 
-const PAGE_SIZE = 20;
+// Keep the inline block short; the rest of the day lives in the popup
+const PREVIEW_COUNT = 5;
 
 const selectedDate = ref('');
-const visibleCount = ref(PAGE_SIZE);
+const galleryOpen = ref(false);
 
 // Most recent day first, so the picker opens on the freshest activity
 const sortedDays = computed(() =>
@@ -172,8 +149,14 @@ const sortedDays = computed(() =>
 
 const selectedDay = computed(() => sortedDays.value.find(d => d.date === selectedDate.value) || null);
 const dayFiles = computed(() => props.filesByDate?.[selectedDate.value] || []);
-const visibleFiles = computed(() => dayFiles.value.slice(0, visibleCount.value));
-const hasMore = computed(() => dayFiles.value.length > visibleFiles.value.length);
+const previewFiles = computed(() => dayFiles.value.slice(0, PREVIEW_COUNT));
+const hasMore = computed(() => dayFiles.value.length > PREVIEW_COUNT);
+
+const gallerySubtitle = computed(() => {
+  const day = selectedDay.value;
+  if (!day) return '';
+  return `${day.contributors} contributor${day.contributors === 1 ? '' : 's'} · ${formatBytes(day.size)}`;
+});
 
 const dateBounds = computed(() => {
   const days = sortedDays.value;
@@ -206,20 +189,12 @@ const jumpToBusiest = () => {
   if (busiest) selectedDate.value = busiest.date;
 };
 
-const userPageUrl = (username) =>
-  `https://commons.wikimedia.org/wiki/User:${encodeURIComponent((username || '').trim())}`;
-
 const formatBytes = (bytes) => {
   if (!bytes) return '0 Bytes';
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-};
-
-// Some Commons files (videos, PDFs, deleted revisions) have no renderable thumbnail
-const onImageError = (event) => {
-  event.target.style.display = 'none';
 };
 
 // Default to the most recent day, and follow the data when the category changes
@@ -231,5 +206,6 @@ watch(sortedDays, (days) => {
   }
 }, { immediate: true });
 
-watch(selectedDate, () => { visibleCount.value = PAGE_SIZE; });
+// Changing day shouldn't leave the previous day's gallery open
+watch(selectedDate, () => { galleryOpen.value = false; });
 </script>

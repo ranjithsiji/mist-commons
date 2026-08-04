@@ -81,69 +81,58 @@
         </a>
       </div>
 
-      <!-- Masonry grid; thumbnails keep their aspect ratio like the heritage tool -->
+      <!-- Only a short preview inline; the full set opens in a popup -->
       <div class="gap-4 columns-2 sm:columns-3 lg:columns-4 xl:columns-5">
-        <figure
-          v-for="file in visibleFiles"
+        <FileCard
+          v-for="file in previewFiles"
           :key="file.filename"
-          class="group mb-4 break-inside-avoid border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-200"
-        >
-          <a :href="file.commonsUrl" target="_blank" rel="noopener noreferrer" class="block bg-gray-100">
-            <img
-              :src="file.thumbnail"
-              :alt="file.title"
-              loading="lazy"
-              class="w-full group-hover:opacity-90 transition-opacity duration-200"
-              @error="onImageError"
-            />
-          </a>
-          <figcaption class="p-3">
-            <a
-              :href="file.commonsUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="block text-sm font-medium text-gray-900 hover:text-wikimedia-blue truncate"
-              :title="file.title"
-            >
-              {{ file.title }}
-            </a>
-            <div class="mt-1 flex items-center justify-between text-xs text-gray-500">
-              <span>{{ file.date }}</span>
-              <span class="flex-shrink-0 ml-2">{{ file.sizeMB }} MB</span>
-            </div>
-            <p v-if="file.camera" class="mt-1 text-xs text-gray-400 truncate" :title="file.camera">
-              {{ file.camera }}
-            </p>
-          </figcaption>
-        </figure>
+          :file="file"
+          :show-user="false"
+        />
       </div>
 
       <div v-if="hasMore" class="mt-6 text-center">
         <button
-          @click="visibleCount += PAGE_SIZE"
-          class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+          @click="galleryOpen = true"
+          class="inline-flex items-center px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:shadow transition-all duration-200"
         >
-          Show more ({{ userFiles.length - visibleFiles.length }} remaining)
+          <svg class="w-4 h-4 mr-2 text-wikimedia-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          View all {{ userFiles.length }} files
         </button>
       </div>
     </template>
+
+    <!-- Full contributor gallery -->
+    <FileGalleryModal
+      :open="galleryOpen"
+      :title="`Files by ${selectedUser}`"
+      :subtitle="gallerySubtitle"
+      :files="userFiles"
+      :show-user="false"
+      @close="galleryOpen = false"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import FileCard from './FileCard.vue';
+import FileGalleryModal from './FileGalleryModal.vue';
 
 const props = defineProps({
   userContributions: { type: Array, required: true },
   filesByUser: { type: Object, required: true }
 });
 
-const PAGE_SIZE = 20;
+// Keep the inline block short; the rest lives in the popup
+const PREVIEW_COUNT = 5;
 
 const selectedUser = ref('');
 const userQuery = ref('');
 const sortKey = ref('newest');
-const visibleCount = ref(PAGE_SIZE);
+const galleryOpen = ref(false);
 
 const contributorNames = computed(() => (props.userContributions || []).map(u => u.name));
 
@@ -168,8 +157,13 @@ const userFiles = computed(() => {
   }
 });
 
-const visibleFiles = computed(() => userFiles.value.slice(0, visibleCount.value));
-const hasMore = computed(() => userFiles.value.length > visibleFiles.value.length);
+const previewFiles = computed(() => userFiles.value.slice(0, PREVIEW_COUNT));
+const hasMore = computed(() => userFiles.value.length > PREVIEW_COUNT);
+
+const gallerySubtitle = computed(() => {
+  const { activeDays, totalSize } = summary.value;
+  return `${activeDays} active day${activeDays === 1 ? '' : 's'} · ${formatBytes(totalSize)}`;
+});
 
 const summary = computed(() => {
   const files = userFiles.value;
@@ -189,10 +183,6 @@ const formatBytes = (bytes) => {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-};
-
-const onImageError = (event) => {
-  event.target.style.display = 'none';
 };
 
 const exportCSV = () => {
@@ -226,5 +216,6 @@ watch(matchingContributors, (users) => {
   }
 }, { immediate: true });
 
-watch([selectedUser, sortKey], () => { visibleCount.value = PAGE_SIZE; });
+// Switching contributor shouldn't leave the previous one's gallery open
+watch(selectedUser, () => { galleryOpen.value = false; });
 </script>

@@ -47,7 +47,15 @@
                 {{ user.name }}
               </a>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.files }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm">
+              <button
+                @click="$emit('show-files', user.name)"
+                class="text-wikimedia-blue hover:text-wikimedia-green font-medium hover:underline"
+                :title="`View the ${user.files} file${user.files === 1 ? '' : 's'} ${user.name} uploaded`"
+              >
+                {{ user.files }}
+              </button>
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.sizeMB }}</td>
           </tr>
         </tbody>
@@ -65,6 +73,8 @@ const props = defineProps({
     required: true
   }
 });
+
+defineEmits(['show-files']);
 
 const query = ref('');
 const sortKey = ref('files');
