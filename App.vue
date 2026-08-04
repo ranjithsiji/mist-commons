@@ -134,11 +134,21 @@
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
             </svg>
             <div>
-              <h3 class="font-medium">Error Loading Data</h3>
+              <h3 class="font-medium">{{ categoryMissing ? 'Category Not Found' : 'Error Loading Data' }}</h3>
               <p class="text-sm mt-1">{{ error }}</p>
-              <div v-if="selectedCategory.isCustom && !categoryValidation?.exists" class="text-sm mt-2">
-                <p>This category may not exist on Wikimedia Commons.</p>
-                <p>Please check the category name and try again.</p>
+              <div v-if="categoryMissing" class="text-sm mt-2">
+                <p>Check the spelling, and note that category names are case sensitive.</p>
+                <p class="mt-1">
+                  <a
+                    :href="getCommonsUrl()"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline hover:text-red-900"
+                  >
+                    Open this category on Commons
+                  </a>
+                  to confirm it exists.
+                </p>
               </div>
             </div>
           </div>
@@ -260,7 +270,7 @@ import Footer from './components/Footer.vue';
 import { useApi } from './composables/useApi';
 import { useDataProcessor } from './composables/useData';
 
-const { loading, error, fetchCategories, fetchDashboardData, validateCategory } = useApi();
+const { loading, error, fetchCategories, fetchDashboardData } = useApi();
 const { processData } = useDataProcessor();
 
 const categories = ref([]);
@@ -270,9 +280,11 @@ const stats = ref(null);
 const geoData = ref([]);
 const loadingCategories = ref(false);
 const mobileMenuOpen = ref(false);
-const categoryValidation = ref(null);
 const urlCopied = ref(false);
 const newUsersOpen = ref(false);
+// Commons confirmed the category does not exist, as opposed to a transient
+// failure the user could retry.
+const categoryMissing = ref(false);
 const contributorFilesOpen = ref(false);
 const contributorFilesUser = ref('');
 
@@ -341,14 +353,13 @@ const selectCategory = (category) => {
     normalizedName: normalizeCategoryName(category.categoryName || category.name),
     urlSlug: getUrlSlug(category.categoryName || category.name)
   };
-  categoryValidation.value = null;
   mobileMenuOpen.value = false;
   updateURL(selectedCategory.value.urlSlug);
   const range = getDateRange(category);
   fetchData(selectedCategory.value.normalizedName, false, range);
 };
 
-const selectCustomCategory = async (category) => {
+const selectCustomCategory = (category) => {
   selectedCategory.value = {
     ...category,
     displayName: getDisplayName(category.categoryName || category.name),
@@ -358,11 +369,8 @@ const selectCustomCategory = async (category) => {
   };
   mobileMenuOpen.value = false;
   updateURL(selectedCategory.value.urlSlug);
-  try {
-    categoryValidation.value = await validateCategory(selectedCategory.value.displayName);
-  } catch (err) {
-    categoryValidation.value = { exists: false, error: err.message };
-  }
+  // The API validates the category against Commons before querying, so there
+  // is no need to spend a second round-trip checking it here first.
   fetchData(selectedCategory.value.normalizedName, true, getDateRange(category));
 };
 
@@ -371,7 +379,6 @@ const backToHome = () => {
   dashboardData.value = null;
   stats.value = null;
   geoData.value = [];
-  categoryValidation.value = null;
   mobileMenuOpen.value = false;
   urlCopied.value = false;
   newUsersOpen.value = false;
@@ -398,6 +405,7 @@ const loadFromURL = () => {
 };
 
 const fetchData = async (categoryName, isCustom = false, dateRange = {}) => {
+  categoryMissing.value = false;
   try {
     const jsonData = await fetchDashboardData(categoryName, isCustom, dateRange);
     const processed = processData(jsonData);
@@ -405,6 +413,11 @@ const fetchData = async (categoryName, isCustom = false, dateRange = {}) => {
     dashboardData.value = processed.data;
     geoData.value = processed.geoData;
   } catch (err) {
+    categoryMissing.value = !!err.categoryMissing;
+    // Don't leave the previous category's dashboard on screen under an error
+    dashboardData.value = null;
+    stats.value = null;
+    geoData.value = [];
     console.error('Error fetching data:', err);
   }
 };

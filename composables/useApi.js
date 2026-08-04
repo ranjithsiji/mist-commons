@@ -77,22 +77,29 @@ export function useApi() {
       
       const url = `${API_BASE_URL}/dashboard.php?${params.toString()}`;
       const response = await fetchWithTimeout(url);
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`);
-      }
-      const jsonData = await response.json();
-      if (!jsonData.success) {
-        throw new Error(jsonData.error || 'Failed to fetch dashboard data');
+      // The API reports its own failures as JSON, so prefer that message over
+      // the bare status line and never surface a raw response body.
+      const jsonData = await response.json().catch(() => null);
+
+      if (!response.ok || !jsonData || !jsonData.success) {
+        const err = new Error(jsonData?.error || `HTTP ${response.status}: ${response.statusText}`);
+        // Commons says the category does not exist: a dead end, not a fault
+        // the user can retry their way out of.
+        err.categoryMissing = response.status === 404 || jsonData?.category_exists === false;
+        throw err;
       }
       return jsonData;
     } catch (err) {
-      const errorMessage = `Failed to load dashboard data: ${err.message}`;
+      const errorMessage = err.categoryMissing
+        ? err.message
+        : `Failed to load dashboard data: ${err.message}`;
       error.value = errorMessage;
-      if (import.meta.env.DEV) {
+      if (import.meta.env.DEV && !err.categoryMissing) {
         return getMockDashboardData(categoryName);
       }
-      throw new Error(errorMessage);
+      const wrapped = new Error(errorMessage);
+      wrapped.categoryMissing = !!err.categoryMissing;
+      throw wrapped;
     } finally {
       loading.value = false;
     }

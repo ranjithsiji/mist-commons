@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit();
 }
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/commons.php';
 
 $cacheDir = __DIR__ . '/../cache';
 $cacheTime = 3600;
@@ -205,6 +206,21 @@ try {
             echo json_encode($data, JSON_UNESCAPED_UNICODE);
             exit;
         }
+    }
+
+    // Same guard as the dashboard: don't scan the replica for a category that
+    // Commons says does not exist. An unreachable API falls through.
+    $check = commonsCategoryInfo($category);
+    if ($check['ok'] && !$check['exists']) {
+        http_response_code(404);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Category not found on Wikimedia Commons: ' . $category,
+            'category' => $category,
+            'category_exists' => false,
+            'timestamp' => date('c')
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
     $data = queryNewUsers($category, $startDate, $endDate, $graceDays);

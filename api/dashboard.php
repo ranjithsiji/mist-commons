@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit();
 }
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/commons.php';
 $cacheDir = __DIR__ . '/../cache';
 $cacheTime = 3600;
 function isCacheValid($f, $t)
@@ -189,6 +190,22 @@ try {
     } elseif ($useSampleData) {
         $data = loadSampleData($category);
     } else {
+        // Confirm the category exists before scanning the replica: a typo or a
+        // deleted category otherwise costs a slow query that can only return
+        // nothing. If Commons itself cannot be reached we fall through and
+        // query anyway, so an API outage never blocks a valid category.
+        $check = commonsCategoryInfo($category);
+        if ($check['ok'] && !$check['exists']) {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Category not found on Wikimedia Commons: ' . $category,
+                'category' => $category,
+                'category_exists' => false,
+                'timestamp' => date('c')
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         $data = queryCommonsDatabase($category, $startDate, $endDate);
     }
 
