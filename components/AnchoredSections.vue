@@ -15,9 +15,26 @@
       <DashboardCharts :data="dashboardData" />
     </div>
 
+    <!-- Daily Uploads Anchor -->
+    <div id="daily" class="scroll-mt-20">
+      <DailyUploads
+        :daily-uploads="dashboardData.dailyUploads"
+        :files-by-date="dashboardData.filesByDate"
+        :total-files="stats.totalFiles"
+      />
+    </div>
+
     <!-- Contributors Anchor -->
     <div id="contributors" class="scroll-mt-20">
       <ContributorsTable :user-contributions="dashboardData.userContributions" />
+    </div>
+
+    <!-- Files by Contributor Anchor -->
+    <div id="user-files" class="scroll-mt-20">
+      <UserFiles
+        :user-contributions="dashboardData.userContributions"
+        :files-by-user="dashboardData.filesByUser"
+      />
     </div>
   </div>
 </template>
@@ -26,6 +43,8 @@
 import StatsCards from './StatsCards.vue';
 import PhotoMap from './PhotoMap.vue';
 import DashboardCharts from './DashboardCharts.vue';
+import DailyUploads from './DailyUploads.vue';
+import UserFiles from './UserFiles.vue';
 import ContributorsTable from './ContributorsTable.vue';
 
 const props = defineProps({

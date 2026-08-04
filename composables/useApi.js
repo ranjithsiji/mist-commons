@@ -98,6 +98,29 @@ export function useApi() {
     }
   };
 
+  // Fetch contributors whose Commons account was registered around the campaign.
+  // Loaded on demand (not with the dashboard) so the main page stays fast.
+  const fetchNewUsers = async (categoryName, dateRange = {}) => {
+    if (!categoryName) {
+      throw new Error('Category name is required');
+    }
+    if (!dateRange.startDate) {
+      throw new Error('This category has no start date configured, so new contributors cannot be identified.');
+    }
+
+    const params = new URLSearchParams({ category: categoryName, start: dateRange.startDate });
+    if (dateRange.endDate) params.append('end', dateRange.endDate);
+    if (dateRange.graceDays != null) params.append('grace', String(dateRange.graceDays));
+
+    const response = await fetchWithTimeout(`${API_BASE_URL}/newusers.php?${params.toString()}`);
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok || !payload || !payload.success) {
+      throw new Error(payload?.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    return payload;
+  };
+
   // Function to validate if a category exists on Commons
   const validateCategory = async (categoryName) => {
     try {
@@ -156,5 +179,5 @@ export function useApi() {
     return { success: true, rows: mockRows, count: mockRows.length, timestamp: new Date().toISOString(), category: categoryName, cached: false, mock_data: true };
   };
 
-  return { loading, error, fetchCategories, fetchDashboardData, validateCategory };
+  return { loading, error, fetchCategories, fetchDashboardData, fetchNewUsers, validateCategory };
 }

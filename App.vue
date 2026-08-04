@@ -41,7 +41,9 @@
                 <a href="#overview" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Overview</a>
                 <a href="#map" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200" v-if="geoData.length > 0">Map</a>
                 <a href="#activity" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Activity</a>
+                <a href="#daily" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Daily</a>
                 <a href="#contributors" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Contributors</a>
+                <a href="#user-files" class="text-gray-700 hover:text-wikimedia-blue font-medium transition-colors duration-200">Files</a>
               </nav>
               
               <button
@@ -82,7 +84,9 @@
               <a href="#overview" @click="mobileMenuOpen = false" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Overview</a>
               <a href="#map" @click="mobileMenuOpen = false" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200" v-if="geoData.length > 0">Map</a>
               <a href="#activity" @click="mobileMenuOpen = false" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Activity</a>
+              <a href="#daily" @click="mobileMenuOpen = false" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Daily Uploads</a>
               <a href="#contributors" @click="mobileMenuOpen = false" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Contributors</a>
+              <a href="#user-files" @click="mobileMenuOpen = false" class="text-gray-700 hover:text-wikimedia-blue font-medium py-2 transition-colors duration-200">Files by Contributor</a>
             </nav>
           </div>
         </div>
@@ -164,6 +168,20 @@
           <!-- Overview Section -->
           <div id="overview" class="scroll-mt-20">
             <StatsCards :stats="stats" />
+
+            <!-- New contributors are looked up on demand: the registration
+                 lookup is a separate query and would slow the dashboard. -->
+            <div v-if="campaignRange.startDate" class="-mt-4 mb-8 flex justify-end">
+              <button
+                @click="newUsersOpen = true"
+                class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:shadow transition-all duration-200"
+              >
+                <svg class="w-4 h-4 mr-2 text-wikimedia-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                View New Contributors
+              </button>
+            </div>
           </div>
 
           <!-- Map Section -->
@@ -176,13 +194,38 @@
             <DashboardCharts :data="dashboardData" />
           </div>
 
+          <!-- Daily Uploads Section -->
+          <div id="daily" class="scroll-mt-20">
+            <DailyUploads
+              :daily-uploads="dashboardData.dailyUploads"
+              :files-by-date="dashboardData.filesByDate"
+              :total-files="stats.totalFiles"
+            />
+          </div>
+
           <!-- Contributors Section -->
           <div id="contributors" class="scroll-mt-20">
             <ContributorsTable :user-contributions="dashboardData.userContributions" />
           </div>
+
+          <!-- Files by Contributor Section -->
+          <div id="user-files" class="scroll-mt-20">
+            <UserFiles
+              :user-contributions="dashboardData.userContributions"
+              :files-by-user="dashboardData.filesByUser"
+            />
+          </div>
         </div>
       </main>
     </div>
+
+    <!-- New Contributors popup (loads on demand) -->
+    <NewUsersModal
+      :open="newUsersOpen"
+      :category="selectedCategory?.normalizedName || ''"
+      :date-range="campaignRange"
+      @close="newUsersOpen = false"
+    />
 
     <!-- Global Footer -->
     <Footer />
@@ -190,12 +233,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import CoverPage from './components/CoverPage.vue';
 import StatsCards from './components/StatsCards.vue';
 import PhotoMap from './components/PhotoMap.vue';
 import DashboardCharts from './components/DashboardCharts.vue';
+import DailyUploads from './components/DailyUploads.vue';
+import UserFiles from './components/UserFiles.vue';
 import ContributorsTable from './components/ContributorsTable.vue';
+import NewUsersModal from './components/NewUsersModal.vue';
 import Footer from './components/Footer.vue';
 import { useApi } from './composables/useApi';
 import { useDataProcessor } from './composables/useData';
@@ -212,6 +258,7 @@ const loadingCategories = ref(false);
 const mobileMenuOpen = ref(false);
 const categoryValidation = ref(null);
 const urlCopied = ref(false);
+const newUsersOpen = ref(false);
 
 const normalizeCategoryName = (name) => name.replace(/^Category:/i, '').replace(/\s+/g, '_');
 const getDisplayName = (name) => name.replace(/^Category:/i, '').replace(/_/g, ' ');
@@ -225,6 +272,13 @@ const getDateRange = (cat) => {
   }
   return { startDate: start, endDate: end };
 };
+
+// Campaign window for the selected category, with TODAY already resolved.
+// Custom categories have no configured dates, so the New Contributors button
+// stays hidden for them.
+const campaignRange = computed(() =>
+  selectedCategory.value ? getDateRange(selectedCategory.value) : { startDate: null, endDate: null }
+);
 
 const loadCategories = async () => {
   loadingCategories.value = true;
@@ -278,6 +332,7 @@ const backToHome = () => {
   categoryValidation.value = null;
   mobileMenuOpen.value = false;
   urlCopied.value = false;
+  newUsersOpen.value = false;
   updateURL('');
 };
 

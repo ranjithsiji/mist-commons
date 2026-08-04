@@ -1,5 +1,62 @@
 import { ref } from 'vue';
 
+// Convert a MediaWiki YYYYMMDD date into YYYY-MM-DD
+const formatImgDate = (date) =>
+  date.length >= 8 ? `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}` : '';
+
+// Convert a MediaWiki YYYYMMDDHHmmss timestamp into HH:mm (UTC, as stored)
+const formatImgTime = (timestamp) =>
+  timestamp.length >= 12 ? `${timestamp.slice(8, 10)}:${timestamp.slice(10, 12)}` : '';
+
+// Turn a raw SQL row into the shape the file browsers render.
+// Row layout: [cl_from, category, filename, imgdate, timestamp, size, metadata, uploader]
+const buildFileEntry = (row) => {
+  const filename = row[2];
+  if (!filename) return null;
+
+  // Dates and timestamps are compared as strings when sorting and grouping;
+  // coerce them since some data sources return them as numbers.
+  const imgdate = String(row[3] ?? '');
+  const timestamp = String(row[4] ?? '');
+
+  const encoded = encodeURIComponent(filename);
+  let camera = '';
+  let lat = null;
+  let lon = null;
+
+  try {
+    const metadata = JSON.parse(row[6] || '{}');
+    camera = metadata?.data?.Model || '';
+    const rawLat = parseFloat(metadata?.data?.GPSLatitude);
+    const rawLon = parseFloat(metadata?.data?.GPSLongitude);
+    if (!isNaN(rawLat) && !isNaN(rawLon) &&
+        rawLat >= -90 && rawLat <= 90 && rawLon >= -180 && rawLon <= 180) {
+      lat = rawLat;
+      lon = rawLon;
+    }
+  } catch (e) {
+    // Metadata is frequently malformed or empty; a file without it is still valid
+  }
+
+  const size = parseInt(row[5]) || 0;
+
+  return {
+    filename,
+    title: String(filename).replace(/_/g, ' '),
+    user: row[7] || 'Unknown',
+    date: formatImgDate(imgdate),
+    time: formatImgTime(timestamp),
+    timestamp,
+    size,
+    sizeMB: (size / (1024 * 1024)).toFixed(2),
+    camera,
+    lat,
+    lon,
+    thumbnail: `https://commons.wikimedia.org/wiki/Special:FilePath/${encoded}?width=320`,
+    commonsUrl: `https://commons.wikimedia.org/wiki/File:${encoded}`
+  };
+};
+
 export function useDataProcessor() {
   const processData = (jsonData) => {
     //console.log('Processing API data:', jsonData);
@@ -16,6 +73,9 @@ export function useDataProcessor() {
     const totalFiles = rows.length;
     const totalSize = rows.reduce((sum, r) => sum + (parseInt(r[5]) || 0), 0);
     const uniqueDates = new Set(rows.map(r => r[3])).size;
+
+    // Full per-file list, used by the daily and per-user file browsers
+    const files = rows.map(row => buildFileEntry(row)).filter(Boolean);
     
     // Process geolocation data from metadata
     const geoLocations = [];
@@ -79,18 +139,27 @@ export function useDataProcessor() {
       }))
       .sort((a, b) => b.files - a.files);
     
-    // Daily uploads from actual data
-    const dailyUploads = {};
-    rows.forEach(row => {
-      const date = row[3];
-      if (date && date.length === 8) {
-        const formattedDate = `${date.slice(0,4)}-${date.slice(4,6)}-${date.slice(6,8)}`;
-        dailyUploads[formattedDate] = (dailyUploads[formattedDate] || 0) + 1;
+    // Daily uploads from actual data, with the files behind each day
+    const filesByDate = {};
+    const filesByUser = {};
+    files.forEach(file => {
+      if (file.date) {
+        (filesByDate[file.date] = filesByDate[file.date] || []).push(file);
       }
+      (filesByUser[file.user] = filesByUser[file.user] || []).push(file);
     });
-    
-    const dailyUploadArray = Object.entries(dailyUploads)
-      .map(([date, count]) => ({ date, uploads: count }))
+
+    // Newest first within a day, so the browsers open on the most recent upload
+    Object.values(filesByDate).forEach(list => list.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+    Object.values(filesByUser).forEach(list => list.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
+
+    const dailyUploadArray = Object.entries(filesByDate)
+      .map(([date, dayFiles]) => ({
+        date,
+        uploads: dayFiles.length,
+        contributors: new Set(dayFiles.map(f => f.user)).size,
+        size: dayFiles.reduce((sum, f) => sum + f.size, 0)
+      }))
       .sort((a, b) => a.date.localeCompare(b.date));
     
     // Hourly distribution from timestamps
@@ -213,7 +282,10 @@ export function useDataProcessor() {
         hourlyDistribution,
         monthlyActivity: monthlyActivityArray,
         sizeDistribution,
-        cameraData
+        cameraData,
+        files,
+        filesByDate,
+        filesByUser
       },
       geoData: geoLocations
     };
@@ -255,7 +327,10 @@ export function useDataProcessor() {
         hourlyDistribution: Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 })),
         monthlyActivity: [],
         sizeDistribution: [],
-        cameraData: []
+        cameraData: [],
+        files: [],
+        filesByDate: {},
+        filesByUser: {}
       },
       geoData: []
     };
