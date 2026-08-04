@@ -32,6 +32,11 @@ define('CATEGORY_BATCH_SIZE', max(100, (int) ($queryConfig['batch_size'] ?? 1000
 // Above this many files a category cannot be assembled into a single response.
 // Also the backstop when Commons is unreachable and its count is unavailable.
 define('MAX_CATEGORY_FILES', max(CATEGORY_BATCH_SIZE, (int) ($queryConfig['max_files'] ?? 120000)));
+
+// Bytes of img_metadata read per file. The floor is high because GPS sits deep
+// in large blobs (see config.php), and a low value silently drops coordinates
+// from the map rather than failing visibly.
+define('METADATA_HEAD_BYTES', max(32768, (int) ($queryConfig['metadata_head_bytes'] ?? 32768)));
 function isCacheValid($f, $t)
 {
     return file_exists($f) && (time() - filemtime($f)) < $t;
@@ -163,11 +168,13 @@ function queryCommonsDatabase($category, $startDate = null, $endDate = null)
                 DATE_FORMAT(img.img_timestamp, '%Y%m%d') as imgdate,
                 img.img_timestamp,
                 img.img_size,
-                -- Only the head of the blob is needed: the fields the
-                -- dashboard reads sit near the front, and transferring full
-                -- EXIF for every file is what exhausts memory on large
-                -- categories. Truncated rows are parsed leniently below.
-                LEFT(COALESCE(img.img_metadata, ''), 4096) as img_metadata,
+                -- Cap the blob rather than transferring full EXIF for every
+                -- file, which is what exhausts memory on large categories.
+                -- The cap is deliberately generous: GPS can sit 25 KB into a
+                -- blob, so a small cut drops coordinates from the map. See the
+                -- metadata_head_bytes note in config.php before changing it.
+                -- Rows still cut short are parsed leniently below.
+                LEFT(COALESCE(img.img_metadata, ''), " . METADATA_HEAD_BYTES . ") as img_metadata,
                 COALESCE(actor.actor_name, 'Unknown') as uploader
             FROM
                 categorylinks cl

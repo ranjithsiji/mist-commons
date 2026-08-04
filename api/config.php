@@ -53,7 +53,20 @@ return [
         // Above this many files a category cannot be assembled into a single
         // response and is refused with an explanation rather than failing
         // partway through.
-        'max_files' => 120000
+        'max_files' => 120000,
+
+        // Bytes of img_metadata read per file, so that full EXIF is not
+        // transferred for every row.
+        //
+        // Do not lower this casually. GPS coordinates are not near the front of
+        // the blob: measured on Wiki Loves Africa 2026, files whose metadata
+        // exceeds 4 KB carry GPSLatitude at byte offset 25,000 on average and
+        // 28,264 at worst, so a 4 KB or 8 KB cut silently dropped every one of
+        // them from the map. Blobs there average only ~1.5 KB and top out at
+        // ~28.4 KB, so this ceiling costs almost nothing while keeping every
+        // coordinate. Rows still cut short have their fields recovered from the
+        // text, but recovery cannot invent what was never fetched.
+        'metadata_head_bytes' => 32768
     ]
 ];
 ?>
