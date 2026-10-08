@@ -87,20 +87,12 @@ const initMap = () => {
     attributionControl: true
   }).setView([avgLat, avgLon], 8);
   
-  // Borderless (no-label, minimal) basemap
-  // Using Carto light without labels and minimal borders
-  const cartoNoLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
+  // Wikimedia Maps basemap (OSM data, international labels)
+  // https://maps.wikimedia.org - Wikimedia Foundation's hosted tile service
+  const wikimediaTiles = L.tileLayer('https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors, Wikimedia maps',
     maxZoom: 19
   }).addTo(mapInstance);
-  
-  // Optional labels layer to toggle (kept off by default)
-  // const cartoLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-  //   attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-  //   subdomains: 'abcd',
-  //   maxZoom: 19
-  // });
   
   // Create custom location pin marker icon
   const locationIcon = L.divIcon({
